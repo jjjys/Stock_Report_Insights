@@ -1,0 +1,6 @@
+.Naver_Securities_Report
+downloaded_files
+pdfs
+.env
+crawler_checkpoint.json
+crawler.log
