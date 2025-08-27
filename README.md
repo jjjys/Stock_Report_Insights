@@ -3,10 +3,10 @@
 
 
 파이썬 3.10 버전으로 다시 진행.
-1.pip install seleniumbase
-2.코드 제대로 수행 확인
-3.pip install -q -U google-genai
-4.gemini 공식 문서 확인 및 개발
+1. pip install seleniumbase
+2. 코드 제대로 수행 확인
+3. pip install -q -U google-genai
+4. gemini 공식 문서 확인 및 개발
 
 
 # 최대 페이지 제한 설정
