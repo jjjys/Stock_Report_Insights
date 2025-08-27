@@ -4,7 +4,7 @@ import pathlib
 import os
 
 
-def ask(txt, client):
+def ask(client, txt):
   response = client.models.generate_content(
       model="gemini-2.5-flash",
       contents="시부레 쇼부레 ㅠㅠ 나 힘들당",
@@ -16,7 +16,7 @@ def ask(txt, client):
   return response
 
 
-def analyze_image(image_path, client):
+def analyze_image(client, image_path):
   with open(image_path, 'rb') as f:
       image_bytes = f.read()
 
@@ -35,7 +35,7 @@ def analyze_image(image_path, client):
   return response
 
 
-def analyze_pdf(pdf_path, client):
+def analyze_pdf(client, pdf_path):
   # Retrieve and encode the PDF byte
   filepath = pathlib.Path(pdf_path)
 
