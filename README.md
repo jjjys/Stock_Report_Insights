@@ -4,9 +4,16 @@
 
 파이썬 3.10 버전으로 다시 진행.
 1.pip install seleniumbase
-2.코드 제대로 수행됨.
+2.코드 제대로 수행 확인
+3.pip install -q -U google-genai
+4.gemini 공식 문서 확인 및 개발
 
-3.재미나이 공식 사이트에 있는 내용 참고해서 pdf, img, txt 되는지 확인
+
+# 최대 페이지 제한 설정
+end_page = 999 
+
+# 참고 자료
 https://aistudio.google.com/apikey
-
-pdf, img, txt 이전 gemini 플젝에서 되는것과 코드 및 성능(모델) 비교
+https://ai.google.dev/gemini-api/docs/quickstart
+https://ai.google.dev/gemini-api/docs/document-processing
+https://ai.google.dev/gemini-api/docs/image-understanding

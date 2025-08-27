@@ -3,4 +3,5 @@ downloaded_files
 pdfs
 .env
 crawler_checkpoint.json
+naver_securities_reports.json
 crawler.log
