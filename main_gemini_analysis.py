@@ -7,7 +7,7 @@ import os
 def ask(client, txt):
   response = client.models.generate_content(
       model="gemini-2.5-flash",
-      contents="시부레 쇼부레 ㅠㅠ 나 힘들당",
+      contents=txt,
       config=types.GenerateContentConfig(
           thinking_config=types.ThinkingConfig(thinking_budget=0) # Disables thinking
       ),
@@ -55,6 +55,14 @@ def analyze_pdf(client, pdf_path):
 if __name__ == "__main__":
   GEMINI_API_KEY_01 = os.getenv("GEMINI_API_KEY_01")
   gemini_01 = genai.Client(api_key=GEMINI_API_KEY_01)
+
+  # 대화 테스트
+  res = ask(gemini_01, "나보다 ai가 더 똑똑해졌다..나란 인간 쓸모 없다 느껴져 ㅠ")
   
+  # img 분석 테스트
   image_path =  r'C:\Users\user\Desktop\sellking\data\captcha\captcha_20250721_151414.png' # 분석할 이미지 파일 경로
+  res = analyze_image(gemini_01, image_path)
+
+  # pdf 분석 테스트
   pdf_path = r'C:\Users\user\Desktop\report\pdfs\종목분석_리포트\1H25_인건비와_관세_2H25_반등_25_05_16.pdf' # 분석할 PDF 파일 경로
+  res = analyze_pdf(gemini_01, pdf_path)
