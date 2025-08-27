@@ -2,6 +2,7 @@ from google import genai
 from google.genai import types
 import pathlib
 import os
+from dotenv import load_dotenv
 
 
 def ask(client, txt):
@@ -53,6 +54,7 @@ def analyze_pdf(client, pdf_path):
   return response
 
 if __name__ == "__main__":
+  load_dotenv()
   GEMINI_API_KEY_01 = os.getenv("GEMINI_API_KEY_01")
   gemini_01 = genai.Client(api_key=GEMINI_API_KEY_01)
 
