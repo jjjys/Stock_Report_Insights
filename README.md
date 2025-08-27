@@ -13,7 +13,7 @@
 end_page = 999 
 
 # 참고 자료
-https://aistudio.google.com/apikey
-https://ai.google.dev/gemini-api/docs/quickstart
-https://ai.google.dev/gemini-api/docs/document-processing
-https://ai.google.dev/gemini-api/docs/image-understanding
+1. https://aistudio.google.com/apikey
+2. https://ai.google.dev/gemini-api/docs/quickstart
+3. https://ai.google.dev/gemini-api/docs/document-processing
+4. https://ai.google.dev/gemini-api/docs/image-understanding
