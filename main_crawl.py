@@ -82,8 +82,8 @@ class NaverPaySecuritiesCrawler:
             
             # 파일명 생성 (특수문자 제거)
             safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '_')).replace(" ", "_")
-            safe_date = date.replace(".", "_")
-            pdf_filename = f"{safe_title}_{safe_date}.pdf"
+            safe_date = date.replace(".", "")
+            pdf_filename = f"{safe_date}_{safe_title}.pdf"  # 수정: 날짜_제목 형식으로 변경
             pdf_path = os.path.join(category_dir, pdf_filename)
             
             # 이미 파일이 존재하면 스킵
