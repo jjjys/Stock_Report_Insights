@@ -1,9 +1,9 @@
 # Git Commit message rules
-feat: 새로운 기능 추가
-fix: 버그 수정
-docs: 문서/README/주석
-refactor: 코드 리팩토링 (동작 변화 없음)
-chore: 빌드, 의존성, 설정 등 기타 작업
+1. feat: 새로운 기능 추가
+2. fix: 버그 수정
+3. docs: 문서/README/주석
+4. refactor: 코드 리팩토링 (동작 변화 없음)
+5. chore: 빌드, 의존성, 설정 등 기타 작업
 
 
 
