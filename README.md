@@ -1,3 +1,12 @@
+# Git Commit message rules
+feat: 새로운 기능 추가
+fix: 버그 수정
+docs: 문서/README/주석
+refactor: 코드 리팩토링 (동작 변화 없음)
+chore: 빌드, 의존성, 설정 등 기타 작업
+
+
+
 # Naver_Securities_Report
 네이버 증권 리포트 pdf 파일 데이터 수집 후 GEMINI 활용하여 PDF 분석하여 투자 전략 구현
 
