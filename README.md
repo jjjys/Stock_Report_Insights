@@ -26,3 +26,5 @@ end_page = 999
 2. https://ai.google.dev/gemini-api/docs/quickstart
 3. https://ai.google.dev/gemini-api/docs/document-processing
 4. https://ai.google.dev/gemini-api/docs/image-understanding
+5. https://docs.ollama.com/quickstart
+6. https://docs.ollama.com/capabilities/embeddings
