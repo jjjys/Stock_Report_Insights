@@ -11,7 +11,7 @@ Stock_Report_Insights/
 ├── README.md                 # 프로젝트 설명, 설치/실행 가이드
 ├── requirements.txt          # Python 의존성 (seleniumbase, google-generativeai, sqlalchemy 등)
 ├── .gitignore                # git 무시 파일 (data/, logs/, __pycache__ 등)
-├── .env.example              # 환경 변수 템플릿 (DB_PASS, GEMINI_API_KEY 등)
+├── .env                      # 환경 변수 템플릿 (DB_PASS, GEMINI_API_KEY 등)
 ├── docker-compose.yml        # Docker 서비스 정의 (Airflow, PostgreSQL, Redis)
 ├── init.sql                  # PostgreSQL 초기 스키마 생성 스크립트
 │
@@ -23,13 +23,14 @@ Stock_Report_Insights/
 │   │   └── krx_extractor.py  # KRX API/크롤링 로직
 │   ├── extractors/           # LLM 추출 모듈
 │   │   ├── __init__.py
-│   │   └── gemini_extractor.py  # PDF 텍스트 추출 + Gemini API 호출
+│   │   └── llm_extractor.py  # PDF 텍스트 추출 + Gemini API 호출
 │   ├── loaders/              # DB 저장 모듈
 │   │   ├── __init__.py
-│   │   └── postgres_loader.py  # SQLAlchemy로 INSERT/UPDATE
+│   │   └── pg_naver_loader.py  # SQLAlchemy로 INSERT/UPDATE
+│   │   └── pg_krx_loader.py  # SQLAlchemy로 INSERT/UPDATE
+│   │   └── pg_llm_loader.py  # SQLAlchemy로 INSERT/UPDATE
 │   ├── utils/                # 공통 유틸리티
 │   │   ├── __init__.py
-│   │   ├── config.py         # 설정 로드 (dotenv 사용)
 │   │   ├── logger.py         # 로깅 설정
 │   │   └── notifier.py       # Discord 알림 (discord.py 사용)
 │   └── main.py               # CLI 엔트리포인트 (Airflow 외 수동 실행용)
