@@ -6,6 +6,7 @@
 5. chore: 빌드, 의존성, 설정 등 기타 작업
 
 # 프로젝트 구조
+<pre>
 Stock_Report_Insights/
 ├── README.md                 # 프로젝트 설명, 설치/실행 가이드
 ├── requirements.txt          # Python 의존성 (seleniumbase, google-generativeai, sqlalchemy 등)
@@ -54,7 +55,7 @@ Stock_Report_Insights/
 └── scripts/                  # 유틸 스크립트
     ├── setup.sh              # 초기 설정 (pip install, DB init)
     └── migrate.sh            # Alembic 마이그레이션 (스키마 변경 시)
-
+</pre>
 
 # Naver_Securities_Report
 네이버 증권 리포트 pdf 파일 데이터 수집 후 GEMINI 활용하여 PDF 분석하여 투자 전략 구현
