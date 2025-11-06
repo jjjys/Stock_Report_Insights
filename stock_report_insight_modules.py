@@ -30,16 +30,16 @@ load_dotenv()
 postgres_key = os.getenv('POSTGRES_KEY')
 google_api_key = os.getenv('GOOGLE_API_KEY')
 
-pdf_path = '/content/drive/My Drive/이어드림/pdfs'
-pdf_finished_path = '/content/drive/My Drive/이어드림/pdf_finished'
+report_path = '/content/drive/My Drive/이어드림/reports'
+report_finished_path = '/content/drive/My Drive/이어드림/reports_finished'
 
-if os.path.exists(pdf_path):
-    print(f"디렉터리 '{pdf_path}'가 존재합니다.")
+if os.path.exists(report_path):
+    print(f"디렉터리 '{report_path}'가 존재합니다.")
     # print("디렉터리 내용:")
-    # for item in os.listdir(pdf_path):
+    # for item in os.listdir(report_path):
     #     print(item)
 else:
-    print(f"디렉터리 '{pdf_path}'가 존재하지 않습니다.")
+    print(f"디렉터리 '{report_path}'가 존재하지 않습니다.")
 
 system_prompt = """
 You are a highly skilled information extraction bot.
@@ -186,19 +186,39 @@ class ColumnDef:
     name: str
     dtype: str
     primary_key: bool = False
+    foreign_key: list | tuple = None # (table, column)
     nullable: bool = True
-    check: str = None
+    check: str = None   # syntax valid
     default: Optional[str] = None
 
 @dataclass
 class TableDef:
     name: str
     columns: List[ColumnDef] = field(default_factory=list)
+    constraints: List[str] = field(default_factory=list)  # syntax valid
 
 
 # --------------------------
 # YAML 로딩 헬퍼
 # --------------------------
+"""
+tables:
+  - name: orders
+    columns:
+      - name: order_id
+        dtype: INT
+        primary_key: true
+        nullable: false
+      - name: user_id
+        dtype: INT
+        nullable: false
+        foreign_key: ["users", "id"]
+      - name: order_date
+        dtype: DATE
+    constraints:
+      - "UNIQUE (order_id, user_id)"
+      - "CHECK (order_date <= CURRENT_DATE)"
+"""
 def load_schema_from_yaml(file_path: str) -> List[TableDef]:
     with open(file_path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
@@ -206,7 +226,7 @@ def load_schema_from_yaml(file_path: str) -> List[TableDef]:
     tables = []
     for t in raw.get("tables", []):
         columns = [ColumnDef(**col) for col in t.get("columns", [])]
-        tables.append(TableDef(name=t["name"], columns=columns))
+        tables.append(TableDef(name=t["name"], columns=columns, constraints=t.get("constraints", [])))  # name 필수, cons 선택
 
     return tables
 
@@ -389,7 +409,7 @@ class Schematizer(Node):
             if not col.nullable:
                 col_def += " NOT NULL"
             if col.check is not None:
-                col_def += f" CHECK {col.check}"
+                col_def += f" CHECK ({col.check})"
             if col.default is not None:
                 col_def += f" DEFAULT {col.default}"
             col_defs.append(col_def)
