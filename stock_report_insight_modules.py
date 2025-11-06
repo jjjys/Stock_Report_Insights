@@ -363,20 +363,6 @@ class DBWriter(Node):
             self.conn.close() # 노드별 책임 분리
 
 class Schematizer(Node):
-    """yaml format
-
-    tables:
-    - name: users
-        columns:
-        - name: id
-            dtype: INT
-            primary_key: true
-            nullable: false
-        - name: name
-            dtype: VARCHAR(255)
-        - name: email
-            dtype: VARCHAR(255)
-    """
     def __init__(self, db_key:str):
         # 데이터베이스 연결
         self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
