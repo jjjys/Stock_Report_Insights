@@ -413,6 +413,7 @@ class Schematizer(Node):
             if col.default is not None:
                 col_def += f" DEFAULT {col.default}"
             col_defs.append(col_def)
+        col_defs.extend(table.constraints)
 
         sql = f"CREATE TABLE IF NOT EXISTS {table.name} ({', '.join(col_defs)});"
         print(f"[Schematizer] 실행 SQL:\n{sql}")
