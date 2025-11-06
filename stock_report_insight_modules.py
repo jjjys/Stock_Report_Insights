@@ -46,14 +46,14 @@ You are a highly skilled information extraction bot.
 Your task is to extract specific information from the provided securities report PDF file.
 Extract the following details and return them in JSON format:
 
-- 종목명 (Stock Name)
-- 종목코드 (티커) (Stock Code/Ticker)
-- 작성일 (Date of Report)
-- 현재 주가 (Current Stock Price - only numeric value)
-- 목표 주가 (Target Stock Price - only numeric value)
-- 투자 의견 (Investment Opinion - only in "Buy", "Hold" or "Sell")
-- 작성 애널리스트 (Author Analyst)
-- 소속 증권사 (Affiliated Securities Firm)
+- stock (종목명, Stock Name)
+- ticker (종목코드/티커, Stock Code/Ticker)
+- published_date (리포트 작성일, Date of Report)
+- current_price (현재 주가, Current Stock Price - only numeric value)
+- target_price (목표 주가, Target Stock Price - only numeric value)
+- investment_opinion (투자 의견 - only in "Buy", "Hold" or "Sell")
+- author (작성 애널리스트, Author Analyst)
+- firm (소속 증권사, Affiliated Securities Firm)
 
 If a piece of information is not found, use 'N/A' for string values and 0 for numeric values.
 
@@ -61,14 +61,14 @@ Return only the JSON object. Do not include any other text.
 
 Example JSON format:
 {{
-  "종목명": "Example Stock",
-  "종목코드": "000000",
-  "작성일": "YYYY-MM-DD",
-  "현재 주가": 10000,
-  "목표 주가": 12000,
-  "투자 의견": "BUY",
-  "작성 애널리스트": "Analyst Name",
-  "소속 증권사": "Securities Firm Name"
+  "stock": "예시 종목명",
+  "ticker": "000000",
+  "published_date": "YYYY-MM-DD",
+  "current_price": 10000,
+  "target_price": 12000,
+  "investment_opinion": "BUY",
+  "author": "애널리스트 이름",
+  "firm": "증권사명"
 }}
 """
 
@@ -230,6 +230,21 @@ def load_schema_from_yaml(file_path: str) -> List[TableDef]:
 
     return tables
 
+
+class DBNode(Node):
+    """
+    DB 연결 노드는 DBNode 상속하여 생성자 통해 conn, cursor 객체 자동 생성.
+    생성자 오버라이드 시 반드시 conn, cursor 객체 생성 필요.
+    """
+    def __init__(self, conn=None, cursor=None, db_key:str=None):
+        if conn is not None:
+            self.conn = conn
+            self.cursor = cursor
+        else:
+            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
+            self.cursor = self.conn.cursor()
+            
+
 # ------------------------------
 # 각 노드 정의 및 구현
 # ------------------------------
@@ -255,8 +270,10 @@ class DocumentsLoader(Node):
         return doc_files
 
 class LLMFeatsExtractor(Node):
-    def __init__(self, llm_type:str):
+    def __init__(self, llm_type:str, essential_cols:list|tuple=None):
         self.llm_type = llm_type
+        self.essential_cols = essential_cols if essential_cols is not None else ("ticker", "published_date", "target_price")
+
         self.model_map = {"gemini": self.call_gemini,}# "llama": self.call_llama, "qwen": self.call_qwen} # 모델명 + 메소드 매핑
         self.na_items = [None, "N/A", "n/a", "", 0]
 
@@ -286,13 +303,13 @@ class LLMFeatsExtractor(Node):
         except Exception as e:
             print(f"Error: {e}")
 
-    def feats_valid(self, response:dict) -> bool:
-        # return response \
-              # and isinstance(response, dict) \
-              # and response.get() not in self.na_items \
-              # and response.get() not in self.na_items \
-              # and response.get() not in self.na_items \
-        pass
+    def is_valid_response(self, response:dict) -> bool:
+        is_valid = response is not None and isinstance(response, dict)
+
+        for ec in self.essential_cols:
+            is_valid = is_valid and response.get(ec) not in self.na_items
+
+        return is_valid
 
     def call_gemini(self, file_path:str, llm_version:str, prompt:str, interval:int|float=0, api_key:str=None) -> dict:
         client = genai.Client(api_key=api_key)
@@ -302,7 +319,7 @@ class LLMFeatsExtractor(Node):
         response = response.text.replace("```json", "").replace("```", "")
         response = json.loads(response)
 
-        if self.feats_valid(response):
+        if self.is_valid_response(response):
             return response
         else:
             raise ValueError(f"{os.path.basename(file_path)} 필수 데이터 없음: {response}")
@@ -338,22 +355,18 @@ class KrxTargetHitter(Node):
         else:
             return None
 
-class DBWriter(Node):
-    def __init__(self, conn=None, cursor=None, db_key:str=None):
-        if conn is not None:
-            self.conn = conn
-            self.cursor = cursor
-        else:
-            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
-            self.cursor = self.conn.cursor()
-
-    def __call__(self, data):
+class DBWriter(DBNode):
+    def __call__(self, table:str, data:dict, pk:list|tuple):
         """
         단일 데이터 DB INSERT
         """
         print(f"[DBWriter] 데이터 삽입: {data}")
         try:
-            pass
+            self.cursor.execute(f"""
+                INSERT INTO {table} { tuple(data.keys()) }
+                VALUES { tuple(data.values()) }
+                ON CONFLICT { tuple(pk) } DO NOTHING;
+            """)
         except (Exception, psycopg2.Error) as e:
             self.conn.rollback()
             print(f"DB INSERT Error: {e}")
@@ -361,6 +374,23 @@ class DBWriter(Node):
             self.conn.commit()
         finally:
             self.conn.close() # 노드별 책임 분리
+
+class DBSelector(DBNode):
+    def __call__(self, table:str, cols:list[str]|tuple[str], conditions:dict):
+        """
+        단일 테이블 DB SELECT
+        Args:
+            table (str): 테이블명
+            cols (list[str]|tuple[str]): 컬럼명 리스트
+            conditions (dict): {조건 컬럼: 조건 문법} # syntax valid
+        """
+        print("[DBSelector] 데이터 조회")
+        self.cursor.execute(f"""
+            SELECT { ", ".join(cols) } FROM { table } 
+            WHERE { " AND ".join([f"{k} {v}" for k, v in conditions.items()]) };
+        """)
+        
+        return self.cursor.fetchall()
 
 class Schematizer(Node):
     def __init__(self, db_key:str):
