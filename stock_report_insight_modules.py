@@ -403,7 +403,10 @@ class DBSelector(DBNode):
             WHERE { " AND ".join([f"{k} {v}" for k, v in conditions.items()]) };
         """)
         
-        return self.cursor.fetchall()
+        result = self.cursor.fetchall()
+        self.conn.close()
+
+        return result
 
 class Schematizer(Node):
     def __init__(self, db_key:str):
