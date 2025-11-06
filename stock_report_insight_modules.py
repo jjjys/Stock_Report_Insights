@@ -356,17 +356,30 @@ class KrxTargetHitter(Node):
             return None
 
 class DBWriter(DBNode):
-    def __call__(self, table:str, data:dict, pk:list|tuple):
+    def __call__(self, table:str, data:dict, pk:list[str]|tuple[str], do_upsert:bool=False):
         """
         단일 데이터 DB INSERT
+        Args:
+            table (str): 테이블명
+            data (dict): 데이터 = {'컬럼명': 값}
+            pk (list[str]|tuple[str]): 기본키 컬럼 리스트 (문법상 data.key 내부 값)
+            do_upsert (bool): Upsert 여부
         """
         print(f"[DBWriter] 데이터 삽입: {data}")
         try:
+            conflict_action = None
+            if do_upsert:
+                set_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in data.keys() if col not in pk])
+                conflict_action = f"UPDATE SET {set_clause}"
+            else:
+                conflict_action = "NOTHING"
+
             self.cursor.execute(f"""
-                INSERT INTO {table} { tuple(data.keys()) }
-                VALUES { tuple(data.values()) }
-                ON CONFLICT { tuple(pk) } DO NOTHING;
-            """)
+                INSERT INTO { table } ({ ", ".join(data.keys()) })
+                VALUES ({ ", ".join(["%s"] * len(data)) })
+                ON CONFLICT { tuple(pk) } DO { conflict_action };
+            """, tuple(data.values()))
+
         except (Exception, psycopg2.Error) as e:
             self.conn.rollback()
             print(f"DB INSERT Error: {e}")
@@ -376,7 +389,7 @@ class DBWriter(DBNode):
             self.conn.close() # 노드별 책임 분리
 
 class DBSelector(DBNode):
-    def __call__(self, table:str, cols:list[str]|tuple[str], conditions:dict):
+    def __call__(self, table:str, cols:list[str]|tuple[str], conditions:dict) -> list[tuple]:
         """
         단일 테이블 DB SELECT
         Args:
