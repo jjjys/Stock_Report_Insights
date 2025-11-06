@@ -377,7 +377,7 @@ class DBWriter(DBNode):
             self.cursor.execute(f"""
                 INSERT INTO { table } ({ ", ".join(data.keys()) })
                 VALUES ({ ", ".join(["%s"] * len(data)) })
-                ON CONFLICT { tuple(pk) } DO { conflict_action };
+                ON CONFLICT ({ ", ".join(pk) }) DO { conflict_action };
             """, tuple(data.values()))
 
         except (Exception, psycopg2.Error) as e:
