@@ -1,7 +1,11 @@
-.Naver_Securities_Report
-downloaded_files
-pdfs
+# 가상환경
+.Stock_Report_Insights
+
+# 증권 레포트
+data
+
+# 민감 정보
 .env
-crawler_checkpoint.json
-naver_securities_reports.json
+
+# 로그 파일
 crawler.log
