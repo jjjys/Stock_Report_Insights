@@ -409,7 +409,7 @@ class KrxTargetHitter(Node):
             return None, None
 
 class DBWriter(DBNode):
-    def __init__(self, table:str, pk:list[str]|tuple[str], do_upsert:bool=False, toss_input:bool=False):
+    def __init__(self, table:str, pk:list[str]|tuple[str], do_upsert:bool=False, toss_input:bool=False, conn=None, cursor=None, db_key:str=None):
         """
         Args:
             table (str): 테이블명
@@ -421,6 +421,13 @@ class DBWriter(DBNode):
         self.pk = pk
         self.do_upsert = do_upsert
         self.toss_input = toss_input
+
+        if conn is not None:
+            self.conn = conn
+            self.cursor = cursor
+        else:
+            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
+            self.cursor = self.conn.cursor()
 
     def __call__(self, data:dict, *args, **kwargs) -> dict:
         """
@@ -458,7 +465,7 @@ class DBWriter(DBNode):
             return data if self.toss_input else None
 
 class DBSelector(DBNode):
-    def __init__(self, table:str, cols:list[str]|tuple[str], conditions:dict):
+    def __init__(self, table:str, cols:list[str]|tuple[str], conditions:dict, conn=None, cursor=None, db_key:str=None):
         """
         Args:
             table (str): 테이블명
@@ -468,6 +475,13 @@ class DBSelector(DBNode):
         self.table = table
         self.cols = cols
         self.conditions = conditions
+
+        if conn is not None:
+            self.conn = conn
+            self.cursor = cursor
+        else:
+            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
+            self.cursor = self.conn.cursor()
 
     def __call__(self, *args, **kwargs) -> list[tuple]:
         """
