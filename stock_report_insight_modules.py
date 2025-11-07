@@ -85,9 +85,13 @@ class Node:
         # self 다음에 other를 실행하는 새 파이프라인을 반환
         return Pipeline([self, other])
 
+    def __sub__(self, other):
+        """self와 other를 하나의 노드로 연결하여 동시에 실행. 앞 노드 결과만 반환."""
+        return Combined(self, other, hop_mode=True)
+    
     def __add__(self, other):
-        """self와 other를 하나의 노드로 연결하여 동시에 실행"""
-        return Combined(self, other)
+        """self와 other를 하나의 노드로 연결하여 동시에 실행. 앞뒤 노드 결과 모두 반환."""
+        return Combined(self, other, hop_mode=False)
 
     def __mul__(self, workers):
         """멀티스레딩을 쉽게 적용할 수 있는 연산자"""
@@ -100,14 +104,19 @@ class Node:
 
 class Combined(Node):
     """두 노드를 동시에 실행 (추출 + DB 적재)"""
-    def __init__(self, left, right):
+    def __init__(self, left, right, hop_mode:bool):
         self.left = left
         self.right = right
+        self.hop_mode = hop_mode
 
     def __call__(self, data):
-        result = self.left(data)
-        self.right(result)
-        return result  # 필요시 결과를 반환
+        result_l = self.left(data)
+        result_r = self.right(result_l)
+
+        if self.hop_mode:
+            return result_l  # 필요시 결과를 반환
+        else:
+            return result_l, result_r
 
 
 class MultiThreadNode(Node):
@@ -179,6 +188,7 @@ class Pipeline(Node):
         value = data
         for node in self.nodes:
             value = node(value)
+            
         return value
 
 
@@ -239,6 +249,7 @@ class DBNode(Node):
     """
     DB 연결 노드는 DBNode 상속하여 생성자 통해 conn, cursor 객체 자동 생성.
     생성자 오버라이드 시 반드시 conn, cursor 객체 생성 필요.
+    호출 함수(__call__)는 오버라이드 권장.
     """
     def __init__(self, conn=None, cursor=None, db_key:str=None):
         if conn is not None:
@@ -247,6 +258,33 @@ class DBNode(Node):
         else:
             self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
             self.cursor = self.conn.cursor()
+    
+    def __call__(self, query:str, *args, **kwargs) -> list[tuple]:
+        # 파이프라인 내 노드로 사용
+        return self.call_db_with_complete_query(query)
+    
+    def call_db_with_complete_query(self, query:str, data:list|tuple=None) -> list[tuple]:
+        """
+        직접 호출 시 사용 (상속 시 사용하지 않음 권장)
+
+        Args:
+            query (str): 쿼리문 (데이터 동적 제공 시 %s 사용)
+            data (list|tuple): 쿼리 데이터 (동적 제공 시 사용)
+        """
+        try:
+            print(f"[DBNode] 실행 SQL:\n{query}")
+            self.cursor.execute(query, data)
+        except (Exception, psycopg2.Error) as e:
+            self.conn.rollback()
+            print(f"[DBNode] Error: {e}")
+        else:
+            self.conn.commit()
+            print("[DBNode] SQL Success")
+        finally:
+            self.conn.close()
+
+            if "select" in query.lower() and "from" in query.lower():
+                return self.cursor.fetchall()
             
 
 # ------------------------------
@@ -465,16 +503,14 @@ class DBWriter(DBNode):
             return data if self.toss_input else None
 
 class DBSelector(DBNode):
-    def __init__(self, table:str, cols:list[str]|tuple[str], conditions:dict, conn=None, cursor=None, db_key:str=None):
+    def __init__(self, table:str, cols:list[str]|tuple[str]=None, conn=None, cursor=None, db_key:str=None):
         """
         Args:
             table (str): 테이블명
             cols (list[str]|tuple[str]): 컬럼명 리스트
-            conditions (dict): {조건 컬럼: 조건 문법} (e.g. {'when': 'BETWEEN .. AND ..'}) # syntax valid
         """
         self.table = table
         self.cols = cols
-        self.conditions = conditions
 
         if conn is not None:
             self.conn = conn
@@ -483,16 +519,18 @@ class DBSelector(DBNode):
             self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
             self.cursor = self.conn.cursor()
 
-    def __call__(self, *args, **kwargs) -> list[tuple]:
+    def __call__(self, conditions:dict, *args, **kwargs) -> list[tuple]:  # WHERE 구문을 파이프라인 내 사용 어려움
         """
         단일 테이블 DB SELECT
-        
+
+        Args:
+            conditions (dict): {조건 컬럼: 조건 문법} (e.g. {'when': 'BETWEEN .. AND ..'}) # syntax valid
         Returns: 조회 결과 (list)
         """
         print("[DBSelector] 데이터 조회")
         self.cursor.execute(f"""
-            SELECT { ", ".join(self.cols) } FROM { self.table }
-            WHERE { " AND ".join([f"{k} {v}" for k, v in self.conditions.items()]) };
+            SELECT { ", ".join(self.cols) if self.cols is not None else "*" } FROM { self.table }
+            WHERE { " AND ".join([f"{k} {v}" for k, v in conditions.items()]) };
         """)
 
         result = self.cursor.fetchall()
@@ -543,6 +581,97 @@ class Schematizer(DBNode):
         self.cursor.execute(sql)
 
 
+# ------------------------------
+# 지정구간 모듈 구현 (하드)
+# ------------------------------
+class ReportDB(DBNode):
+    def __call__(self):
+        try:
+            self.cursor.execute(f"""
+                INSERT INTO reports (post_date, report_name, report_url)
+                VALUES (%s, %s, %s);
+            """, (post_date, report_name, report_url))
+        except (Exception, psycopg2.Error) as e:
+            print(f"[ReportDB] INSERT Error: TABLE (reports)\n{e}")
+            self.conn.rollback()
+            raise
+        else:
+            self.conn.commit()
+            self.cursor.execute(f"""
+                SELECT id FROM reports WHERE report_name = %s;
+            """, report_name)
+            report_id = self.cursor.fetchone()[0]
+        finally:
+            self.conn.close()
+            return report_id # 추가 반환 데이터 필요
+
+class ReportExtractionsDB(DBNode):
+    def __call__(self, values:tuple): # (report_id, llm_type, llm_version, stock, ticker, investment_opinion, published_date, current_price, target_price, author, firm)
+        try:
+            self.cursor.execute(f"""
+                INSERT INTO stock_info (stock, ticker)
+                VALUES (%s, %s);
+                INSERT INTO llm (type, version)
+                VALUES (%s, %s);
+                INSERT INTO analyst (name, firm)
+                VALUES (%s, %s);
+            """, (stock, ticker, llm_type, llm_version, author, firm))
+        except (Exception, psycopg2.Error) as e:
+            self.conn.rollback()
+            print(f"[ReportExtractionsDB] INSERT Error: TABLE (stock_info, llm, analyst)\n{e}")
+            raise
+        else:
+            self.conn.commit()
+            self.cursor.execute(f"""
+                SELECT stock_id FROM stock_info WHERE ticker = %s;
+            """, ticker)
+            stock_id = self.cursor.fetchone()[0]
+            self.cursor.execute(f"""
+                SELECT llm_id FROM llm WHERE type = %s AND version = %s;
+            """, (llm_type, llm_version))
+            llm_id = self.cursor.fetchone()[0]
+            self.cursor.execute("""
+                SELECT analyst_id FROM analyst WHERE name = %s AND firm = %s;
+            """, (name, firm))
+            analyst_id = self.cursor.fetchone()[0]
+            
+            try:
+                self.cursor.execute("""
+                    INSERT INTO report_extractions (id, llm_id, investment_opinion, stock_id, published_date, current_price, target_price, analyst_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                """, (report_id, llm_id, investment_opinion, stock_id, published_date, current_price, target_price, analyst_id))
+            except (Exception, psycopg2.Error) as e:
+                print(f"[ReportExtractionsDB] INSERT Error: TABLE (report_extractions)\n{e}")
+            else:
+                try:
+                    self.cursor.execute("""
+                        UPDATE reports SET report_preprocessed = TRUE WHERE id = %s;
+                    """, report_id)
+                except (Exception, psycopg2.Error) as e:
+                    self.conn.rollback()
+                    print(f"[ReportExtractionsDB] UPDATE Error: TABLE (reports)\n{e}")
+                    raise
+                else:
+                    self.conn.commit()  # reports에 report_extractions 적재 사실 업데이트 실패 시 적재 내용도 롤백
+        finally:
+            self.conn.close()
+  
+  class KrxDB(DBNode):
+      def __call__(self, values:tuple): # (report_id, llm_id, hit_date, hit_days)
+          try:
+              self.cursor.execute("""
+                  INSERT INTO krx (id, llm_id, target_price_reached_date, days_to_reach)
+                  VALUES (%s, %s, %s, %s);
+              """, values)
+          except (Exception, psycopg2.Error) as e:
+              print(f"[ReportExtractionsDB] INSERT Error: TABLE (krx)\n{e}")
+              self.conn.rollback()
+              raise
+          else:
+              self.conn.commit()
+          finally:
+              self.conn.close()
+              
 # ------------------------------
 # 사용 예시
 # ------------------------------
