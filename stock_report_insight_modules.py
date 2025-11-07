@@ -486,15 +486,12 @@ class DBSelector(DBNode):
 
         return result
 
-class Schematizer(Node):
-    def __init__(self, db_key:str):
-        # 데이터베이스 연결
-        self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=db_key)
-        self.cursor = self.conn.cursor()
-
+class Schematizer(DBNode):
     def __call__(self, tables: List[TableDef]):
         """
-        YAML 파일의 DB 스키마 정보 반영하여 테이블 확인 및 생성
+        YAML 파일의 DB 스키마 정보 반영하여 테이블 확인 및 생성.
+        파이프라인 시작 시 한 번만 실행.
+
         Args:
             tables (List[TableDef]): 테이블 정의 리스트
         """
