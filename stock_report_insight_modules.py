@@ -25,6 +25,7 @@ from pykrx import stock
 # DB 스키마
 from dataclasses import dataclass, field
 from typing import List, Optional
+from multipledispatch import dispatch
 
 load_dotenv()
 postgres_key = os.getenv('POSTGRES_KEY')
@@ -49,13 +50,14 @@ Extract the following details and return them in JSON format:
 - stock (종목명, Stock Name)
 - ticker (종목코드/티커, Stock Code/Ticker)
 - published_date (리포트 작성일, Date of Report)
-- current_price (현재 주가, Current Stock Price - only numeric value)
-- target_price (목표 주가, Target Stock Price - only numeric value)
+- current_price (현재 주가, Current Stock Price - only numeric, positive integer value)
+- target_price (목표 주가, Target Stock Price - only numeric, positive integer value)
 - investment_opinion (투자 의견 - only in "Buy", "Hold" or "Sell")
 - author (작성 애널리스트, Author Analyst)
 - firm (소속 증권사, Affiliated Securities Firm)
 
 If a piece of information is not found, use 'N/A' for string values and 0 for numeric values.
+(0 means: Not Found)
 
 Return only the JSON object. Do not include any other text.
 
@@ -150,8 +152,10 @@ class MapNode(Node):
                 res = self.node(d)
                 results.append(res)
             except Exception as e:
-                print(f"[MapNode] {i}번째 항목 처리 중 오류: {e}")
+                print(f"[MapNode] {i}번째 항목 처리 중 오류 발생: {e}")
                 results.append(None)
+
+        print("[MapNode] 모든 작업 완료")
         return results
 
 
@@ -249,59 +253,84 @@ class DBNode(Node):
 # 각 노드 정의 및 구현
 # ------------------------------
 class DocumentsLoader(Node):
-    def __call__(self, docs_dir_path:str, extension:str, verbose:bool=False) -> list:
+    def __init__(self, docs_dir_path:str=None, extension:str=None, verbose:bool=False):
         """
-        경로에서 참고문서 파일 목록을 가져옴
         Args:
             docs_dir_path (str): 참고문서 파일이 있는 디렉토리 경로
             extension (str): 참고문서 파일 확장자
             verbose (bool): 진행상황 파악 여부
+        """
+        self.docs_dir_path = docs_dir_path
+        self.extension = extension if extension is not None else "PDF"
+        self.verbose = verbose
+
+    def __call__(self, *args, **kwargs) -> list:
+        """
+        경로에서 참고문서 파일 목록을 가져옴
+        
         Returns: 참고문서 파일명 (list)
         """
-        print(f"[Files Loader] 디렉토리 경로: {docs_dir_path}")
-        all_items = os.listdir(docs_dir_path)
-        doc_files = [item for item in all_items if item.endswith("".join([".", extension.lower()]))]
+        print(f"[Files Loader] 디렉토리 경로: {self.docs_dir_path}")
+        all_items = os.listdir(self.docs_dir_path)
+        doc_files = [item for item in all_items if item.endswith("".join([".", self.extension.lower()]))]
 
-        if verbose:
-          print(f"다음 {extension.upper()} 파일이 로드됩니다:")
+        if self.verbose:
+          print(f"다음 {self.extension.upper()} 파일이 로드됩니다:")
           for file in doc_files:
               print(file)
 
         return doc_files
 
 class LLMFeatsExtractor(Node):
-    def __init__(self, llm_type:str, essential_cols:list|tuple=None):
-        self.llm_type = llm_type
-        self.essential_cols = essential_cols if essential_cols is not None else ("ticker", "published_date", "target_price")
-
-        self.model_map = {"gemini": self.call_gemini,}# "llama": self.call_llama, "qwen": self.call_qwen} # 모델명 + 메소드 매핑
-        self.na_items = [None, "N/A", "n/a", "", 0]
-
-    def __call__(self, docs_dir_path:str, doc:str, llm_version:str, prompt:str, interval:int|float=0, api_key:str=None) -> dict:
+    def __init__(self, docs_dir_path:str, llm_type:str, llm_version:str, prompt:str, interval:int|float=0, api_key:str=None, essential_cols:list|tuple=None):
         """
-        단일 참고문서에서 LLM을 통해 필요한 정보를 추출
         Args:
-            doc (str): 참고문서 파일명
+            docs_dir_path (str): 참고문서 디렉토리 경로 (DocumentsLoader 사용 시 경로 일치 필수)
             llm_version (str): 생성자 LLM 버전 정보 - 포맷은 모델에 따라 다름 (공식문서 참조)
             prompt (str): LLM에 전달할 프롬프트
-            api_key (str): LLM API 키 (로컬 모델의 경우 필요 없음)
             interval (int|float): LLM API 호출 간격 (초)
-        Returns: 추출된 정보 (dict)
+            api_key (str): LLM API 키 (로컬 모델의 경우 필요 없음)
+            essential_cols (list|tuple): 추출 항목 중 필수 항목명
         """
-        print(f"[LLMFeatsExtractor] {self.llm_type}으로 데이터 추출 중...")
+        self.docs_dir_path = docs_dir_path
+        self.llm_type = llm_type
+        self.llm_version = llm_version
+        self.prompt = prompt
+        self.interval = interval
+        self.api_key = api_key
+        self.essential_cols = essential_cols if essential_cols is not None else tuple()
+
+        self.model_map = {"gemini": self.call_gemini,}# "llama": self.call_llama, "qwen": self.call_qwen} # 모델명 + 메소드 매핑
+        self.na_items = (None, "N/A", "n/a", "", 0) # 추출 실패 시 발생 항목
+
+    def __call__(self, doc:str, *args, **kwargs) -> dict:
+        """
+        단일 참고문서에서 LLM을 통해 필요한 정보를 추출
+
+        Args:
+            doc (str): 단일 참고문서 파일명
+        Returns: 참고문서에서 추출된 정보 (dict)
+        """
+        print(f"[LLMFeatsExtractor] {self.llm_type}(으)로 데이터 추출 중...")
         extractor = self.model_map.get(self.llm_type, None)
-        file_path = os.path.join(docs_dir_path, doc)
+        file_path = os.path.join(self.docs_dir_path, doc)
 
         if extractor is None:
             raise ValueError(f"지원하지 않는 LLM 타입: {self.llm_type}")
 
-        if interval > 0:
-            time.sleep(interval)
+        if self.interval > 0:
+            time.sleep(self.interval)
 
         try:
-            return extractor(file_path, llm_version, prompt, interval, api_key)
+            response = extractor(file_path, self.llm_version, self.prompt, self.prompt, self.api_key)
+
+            if self.is_valid_response(response):
+                return response
+            else:
+                raise ValueError(f"{os.path.basename(file_path)} 필수 데이터 없음: {response}")
+
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[LLMFeatsExtractor] {self.llm_type}-{self.llm_version} Error: {e}")
 
     def is_valid_response(self, response:dict) -> bool:
         is_valid = response is not None and isinstance(response, dict)
@@ -316,13 +345,9 @@ class LLMFeatsExtractor(Node):
         sample_file = client.files.upload(file=file_path)
 
         response = client.models.generate_content(model=f"gemini-{llm_version}", contents=[sample_file, prompt])
-        response = response.text.replace("```json", "").replace("```", "")
-        response = json.loads(response)
+        response = response.text.replace("```json", "").replace("```", "").strip()
 
-        if self.is_valid_response(response):
-            return response
-        else:
-            raise ValueError(f"{os.path.basename(file_path)} 필수 데이터 없음: {response}")
+        return json.loads(response)
 
     def call_llama(self) -> dict:
         pass
@@ -331,15 +356,43 @@ class LLMFeatsExtractor(Node):
         pass
 
 class DataProcessor(Node):
-    def __call__(self, data):
+    def __call__(self, data, *args, **kwargs):
         print("[DataProcessor] 사용자 정의 노드 구현용...")
-        pass
+        raise NotImplementedError
 
 class KrxTargetHitter(Node):
-    def __call__(self, ticker:str, report_date:str, target_price:int|float):
+    def __init__(self, ticker_key:str=None, report_date_key:str=None, target_price_key:str=None):
+        """
+        파이프라인 내 노드로 사용 시 반드시 작성
+        
+        Args:
+            ticker_key (str): [LLMFeatsExtractor] 종목코드 key
+            report_date_key (str): [LLMFeatsExtractor] 작성일 key
+            target_price_key (str): [LLMFeatsExtractor] 목표 주가 key
+        """
+        self.ticker_key = ticker_key
+        self.report_date_key = report_date_key
+        self.target_price_key = target_price_key
+
+    @dispatch(dict)
+    def __call__(self, trt:dict) -> tuple[str, timedelta]:
+        # 파이프라인 내 노드로 사용
+        trt = {"ticker": trt.get(self.ticker_key, None),
+               "report_date": trt.get(self.report_date_key, None),
+               "target_price": trt.get(self.target_price_key, None)}
+
+        return self.krx_target_hitter(**trt)
+    
+    @dispatch(str, str, int)
+    def __call__(self, ticker:str, report_date:str, target_price:int) -> tuple[str, timedelta]:
+        # 직접 호출 시 사용
+        return self.krx_target_hitter(ticker, report_date, target_price)
+
+    def krx_target_hitter(self, ticker:str, report_date:str, target_price:int) -> tuple[str, timedelta]:
         start_date = report_date.replace("-", "")
         end_date = datetime.today().strftime("%Y%m%d")
 
+        print(f"[KrxTargetHitter] KRX 데이터 호출 중...")
         df = stock.get_market_ohlcv_by_date(start_date, end_date, ticker)
         df = df[["종가"]]
 
@@ -353,56 +406,81 @@ class KrxTargetHitter(Node):
 
             return first_hit_date, (hit_dt - report_dt).days
         else:
-            return None
+            return None, None
 
 class DBWriter(DBNode):
-    def __call__(self, table:str, data:dict, pk:list[str]|tuple[str], do_upsert:bool=False):
+    def __init__(self, table:str, pk:list[str]|tuple[str], do_upsert:bool=False, toss_input:bool=False):
         """
-        단일 데이터 DB INSERT
         Args:
             table (str): 테이블명
-            data (dict): 데이터 = {'컬럼명': 값}
-            pk (list[str]|tuple[str]): 기본키 컬럼 리스트 (문법상 data.key 내부 값)
+            pk (list[str]|tuple[str]): 기본키 컬럼 리스트 (실제 스키마와 일치 권장)
             do_upsert (bool): Upsert 여부
+            toss_input (bool): 입력 데이터 출력 여부 (False 시 출력은 None)
+        """
+        self.table = table
+        self.pk = pk
+        self.do_upsert = do_upsert
+        self.toss_input = toss_input
+
+    def __call__(self, data:dict, *args, **kwargs) -> dict:
+        """
+        단일 데이터 DB INSERT
+
+        Args:
+            data (dict): 데이터 = {'컬럼명': 값} (컬럼명, 데이터 타입 실제 스키마와 일치 필수)
+        Returns: 
+            - 입력 데이터 (toss_input=False)
+            - None (toss_input=True)
         """
         print(f"[DBWriter] 데이터 삽입: {data}")
         try:
             conflict_action = None
-            if do_upsert:
-                set_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in data.keys() if col not in pk])
+            if self.do_upsert:
+                set_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in data.keys() if col not in self.pk])
                 conflict_action = f"UPDATE SET {set_clause}"
             else:
                 conflict_action = "NOTHING"
 
             self.cursor.execute(f"""
-                INSERT INTO { table } ({ ", ".join(data.keys()) })
+                INSERT INTO { self.table } ({ ", ".join(data.keys()) })
                 VALUES ({ ", ".join(["%s"] * len(data)) })
-                ON CONFLICT ({ ", ".join(pk) }) DO { conflict_action };
+                ON CONFLICT ({ ", ".join(self.pk) }) DO { conflict_action };
             """, tuple(data.values()))
 
         except (Exception, psycopg2.Error) as e:
             self.conn.rollback()
-            print(f"DB INSERT Error: {e}")
+            print(f"[DBWriter] DB INSERT Error: {e}")
         else:
             self.conn.commit()
+            print("DB INSERT Success")
         finally:
             self.conn.close() # 노드별 책임 분리
+            return data if self.toss_input else None
 
 class DBSelector(DBNode):
-    def __call__(self, table:str, cols:list[str]|tuple[str], conditions:dict) -> list[tuple]:
+    def __init__(self, table:str, cols:list[str]|tuple[str], conditions:dict):
         """
-        단일 테이블 DB SELECT
         Args:
             table (str): 테이블명
             cols (list[str]|tuple[str]): 컬럼명 리스트
-            conditions (dict): {조건 컬럼: 조건 문법} # syntax valid
+            conditions (dict): {조건 컬럼: 조건 문법} (e.g. {'when': 'BETWEEN .. AND ..'}) # syntax valid
+        """
+        self.table = table
+        self.cols = cols
+        self.conditions = conditions
+
+    def __call__(self, *args, **kwargs) -> list[tuple]:
+        """
+        단일 테이블 DB SELECT
+        
+        Returns: 조회 결과 (list)
         """
         print("[DBSelector] 데이터 조회")
         self.cursor.execute(f"""
-            SELECT { ", ".join(cols) } FROM { table } 
-            WHERE { " AND ".join([f"{k} {v}" for k, v in conditions.items()]) };
+            SELECT { ", ".join(self.cols) } FROM { self.table }
+            WHERE { " AND ".join([f"{k} {v}" for k, v in self.conditions.items()]) };
         """)
-        
+
         result = self.cursor.fetchall()
         self.conn.close()
 
@@ -426,7 +504,7 @@ class Schematizer(Node):
         except (Exception, psycopg2.Error) as e:
             self.conn.rollback()
             self.conn.close()
-            print(f"DB CREATE Error: {e}")
+            print(f"[Schematizer] DB CREATE Error: {e}")
             raise # 스키마 단의 에러 발생 시 전체 파이프라인 중지
         else:
             self.conn.commit()
@@ -438,6 +516,8 @@ class Schematizer(Node):
             col_def = f"{col.name} {col.dtype}"
             if col.primary_key:
                 col_def += " PRIMARY KEY"
+            if col.foreign_key is not None:
+                col_def += f" REFERENCES {col.foreign_key[0]}({col.foreign_key[1]})"
             if not col.nullable:
                 col_def += " NOT NULL"
             if col.check is not None:
@@ -457,7 +537,7 @@ class Schematizer(Node):
 # ------------------------------
 """
 if __name__ == "__main__":
-    pipeline = Schematizer() | DocumentsLoader() | MapNode(LLMFeatsExtractor() + DBWriter() | DataProcessor() + DBWriter())
-    result = pipeline("report.pdf")
+    pipeline = (reports_getter | MapNode(extractor | test_print | krx_hitter | test_print))
+    result = pipeline(None)
     print("최종 결과:", result)
 """
