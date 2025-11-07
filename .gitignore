@@ -9,3 +9,4 @@ data
 
 # 로그 파일
 crawler.log
+__pycache__/
