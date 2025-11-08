@@ -1,0 +1,232 @@
+# 실행 환경, 오버라이딩
+from dotenv import load_dotenv
+from multipledispatch import dispatch
+
+# 모델
+from google import genai
+
+import numpy as np
+import pandas as pd
+
+from datetime import datetime, timedelta
+import os, json, shutil#, subprocess, time, re
+
+# 병렬처리
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import yaml, traceback
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+import psycopg2
+
+# ------------------------------
+# 공통 베이스 클래스 정의
+# ------------------------------
+class Node:
+    """모든 노드의 공통 부모 클래스. 연산자로 연결 가능."""
+
+    def __or__(self, other):
+        # self 다음에 other를 실행하는 새 파이프라인을 반환
+        return Pipeline([self, other])
+
+    def __sub__(self, other):
+        """self와 other를 하나의 노드로 연결하여 동시에 실행. 앞 노드 결과만 반환."""
+        return Combined(self, other, hop_mode=True)
+
+    def __add__(self, other):
+        """self와 other를 하나의 노드로 연결하여 동시에 실행. 앞뒤 노드 결과 모두 반환."""
+        return Combined(self, other, hop_mode=False)
+
+    def __mul__(self, workers):
+        """멀티스레딩을 쉽게 적용할 수 있는 연산자"""
+        return MultiThreadNode(self, max_workers=workers)
+
+    def __call__(self, data):
+        """각 노드가 수행할 구체적 처리 로직 (자식 클래스에서 구현)"""
+        raise NotImplementedError
+
+
+class Combined(Node):
+    """두 노드를 동시에 실행 (추출 + DB 적재)"""
+    def __init__(self, left, right, hop_mode:bool):
+        self.left = left
+        self.right = right
+        self.hop_mode = hop_mode
+
+    def __call__(self, data):
+        result_l = self.left(data)
+        result_r = self.right(result_l)
+
+        if self.hop_mode:
+            return result_l  # 필요시 결과를 반환
+        else:
+            return result_l, result_r
+
+
+class MultiThreadNode(Node):
+    """내부 노드를 멀티스레딩으로 실행하는 노드"""
+    def __init__(self, node, max_workers:int=4):
+        self.node = node
+        self.max_workers = max_workers
+
+    def __call__(self, data_list:list|tuple):
+        """data_list: 여러 입력 데이터를 동시에 처리"""
+        results = []
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {executor.submit(self.node, d): d for d in data_list}
+
+            for future in as_completed(futures):
+                data_item = futures[future]
+                try:
+                    result = future.result()
+                except Exception as e:
+                    print(f"[MultiThreadNode] '{data_item}' 처리 중 오류 발생: {e}")
+                    traceback.print_exc(limit=1)
+                    result = None  # 실패한 항목은 None 처리
+                results.append(result)
+
+        print("[MultiThreadNode] 모든 작업 완료")
+        return results
+
+
+class MapNode(Node):
+    """리스트 형태의 입력을 받아 내부 노드를 각 항목별로 실행"""
+    def __init__(self, node):
+        self.node = node
+
+    def __call__(self, data_list:list|tuple):
+        if not isinstance(data_list, (list, tuple)):
+            raise TypeError("MapNode는 리스트 형태의 입력만 처리할 수 있습니다.")
+
+        print(f"[MapNode] {len(data_list)}개의 항목을 순차 처리 중...")
+        results = []
+        for i, d in enumerate(data_list, start=1):
+            try:
+                res = self.node(d)
+                results.append(res)
+            except Exception as e:
+                print(f"[MapNode] {i}번째 항목 처리 중 오류 발생: {e}")
+                results.append(None)
+
+        print("[MapNode] 모든 작업 완료")
+        return results
+
+
+class Pipeline(Node):
+    """여러 노드를 순차적으로 연결해 실행하는 클래스"""
+    def __init__(self, nodes):
+        self.nodes = []
+        # 파이프라인 합성 지원
+        for n in nodes:
+            if isinstance(n, Pipeline):
+                self.nodes.extend(n.nodes)
+            else:
+                self.nodes.append(n)
+
+    def __or__(self, other):
+        # Pipeline | Node 형태의 연결 지원
+        return Pipeline(self.nodes + [other])
+
+    def __call__(self, data):
+        """파이프라인 실행"""
+        value = data
+        for node in self.nodes:
+            value = node(value)
+
+        return value
+
+
+class DBNode(Node):
+    """
+    DB 연결 노드는 DBNode 상속하여 생성자 통해 conn, cursor 객체 자동 생성.
+    생성자 오버라이드 시 반드시 conn, cursor 객체 생성 필요.
+    호출 함수(__call__)는 오버라이드 권장.
+    """
+    def __init__(self, conn=None, cursor=None):
+        if conn is not None:
+            self.conn = conn
+            self.cursor = cursor
+        else:
+            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=POSTGRES_KEY)
+            self.cursor = self.conn.cursor()
+
+    def __call__(self, query:str, *args, **kwargs) -> list[tuple]:
+        # 파이프라인 내 노드로 사용
+        return self.call_db_with_complete_query(query)
+
+    def call_db_with_complete_query(self, query:str, data:list|tuple=None) -> list[tuple]:
+        """
+        직접 호출 시 사용 (상속 시 사용하지 않음 권장)
+
+        Args:
+            query (str): 쿼리문 (데이터 동적 제공 시 %s 사용)
+            data (list|tuple): 쿼리 데이터 (동적 제공 시 사용)
+        """
+        try:
+            print(f"[DBNode] 실행 SQL:\n{query}")
+            self.cursor.execute(query, data)
+        except (Exception, psycopg2.Error) as e:
+            self.conn.rollback()
+            print(f"[DBNode] Error: {e}")
+        else:
+            self.conn.commit()
+            print("[DBNode] SQL Success")
+        finally:
+            self.conn.close()
+
+            if "select" in query.lower() and "from" in query.lower():
+                return self.cursor.fetchall()
+
+
+# --------------------------
+# 데이터 구조 정의
+# --------------------------
+@dataclass
+class ColumnDef:
+    name: str
+    dtype: str
+    primary_key: bool = False
+    foreign_key: list | tuple = None # (table, column)
+    nullable: bool = True
+    check: str = None               # syntax valid
+    default: Optional[str] = None
+
+@dataclass
+class TableDef:
+    name: str
+    columns: List[ColumnDef] = field(default_factory=list)
+    constraints: List[str] = field(default_factory=list)  # syntax valid
+
+
+# --------------------------
+# YAML 로딩 헬퍼
+# --------------------------
+def load_schema_from_yaml(file_path: str) -> List[TableDef]:
+    """
+    tables:
+    - name: orders
+        columns:
+        - name: order_id
+            dtype: INT
+            primary_key: true
+            nullable: false
+        - name: user_id
+            dtype: INT
+            nullable: false
+            foreign_key: ["users", "id"]
+        - name: order_date
+            dtype: DATE
+        constraints:
+        - "UNIQUE (order_id, user_id)"
+        - "CHECK (order_date <= CURRENT_DATE)"
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    tables = []
+    for t in raw.get("tables", []):
+        columns = [ColumnDef(**col) for col in t.get("columns", [])]
+        tables.append(TableDef(name=t["name"], columns=columns, constraints=t.get("constraints", [])))  # name 필수, cons 선택
+
+    return tables
