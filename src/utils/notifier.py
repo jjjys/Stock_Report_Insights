@@ -3,10 +3,6 @@ import json
 from dotenv import load_dotenv
 import os
 
-# 웹훅 URL 불러오기
-load_dotenv()  # .env 파일 로드
-report_backup_WH = os.getenv("report_backup_WEB_HOOK")
-target_price_notification_WH = os.getenv("target_price_notification_WEB_HOOK")
 
 def send_discord_message(webhook_url, message='메세지 테스트'):
     """Discord로 메시지 전송하는 함수"""
@@ -60,6 +56,11 @@ def send_discord_file(webhook_url, file_path, message='파일 전송 테스트')
             print(f"응답 내용: {response.text}")
 
 if __name__ == "__main__":
+    # 웹훅 URL 불러오기
+    load_dotenv()  # .env 파일 로드
+    report_backup_WH = os.getenv("report_backup_WEB_HOOK")
+    target_price_notification_WH = os.getenv("target_price_notification_WEB_HOOK")
+    
     # 테스트 메시지 전송
     send_discord_message(target_price_notification_WH, "안녕하세요! 이것은 테스트 메시지입니다.")
     
