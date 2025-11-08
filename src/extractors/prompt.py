@@ -1,4 +1,4 @@
-system_prompt_gemini = """
+system_prompt = """
 You are a highly skilled information extraction bot.
 Your task is to extract specific information from the provided securities report PDF file.
 Extract the following details and return them in JSON format:
