@@ -1,4 +1,4 @@
-from src.cores.cores import Node, DBNode
+from cores.cores import DBNode
 
 import psycopg2
 import os, shutil
