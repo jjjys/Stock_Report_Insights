@@ -1,6 +1,10 @@
-from src.cores.cores import Node, DBNode
+from cores.cores import DBNode
 
 import psycopg2
+import os, shutil
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class ReportExtractionsDB(DBNode):
@@ -75,6 +79,7 @@ class ReportExtractionsDB(DBNode):
                     # raise
                 else:
                     self.conn.commit()  # reports에 report_extractions 적재 사실 업데이트 실패 시 적재 내용도 롤백
+                    shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.path.join(os.getenv('REPORTS_FINISHED_PATH'))) # 정보 추출 파일 이동
                 finally:
                     if self.inner_conn:
                         self.conn.close()

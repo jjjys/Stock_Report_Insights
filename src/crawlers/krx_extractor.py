@@ -1,4 +1,4 @@
-from src.cores.cores import Node
+from cores.cores import Node
 
 from multipledispatch import dispatch
 from datetime import datetime, timedelta
