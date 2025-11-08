@@ -5,8 +5,10 @@ import psycopg2
 class ReportDB(DBNode):
     def __call__(self, values:dict):
         report_name = values["report_name"]
-        report_url = values["report_url"]
-        post_date = values["post_date"]
+        # report_url = values["report_url"]
+        # post_date = values["post_date"]
+        report_url = values["Report_url"]
+        post_date = values["작성일"]
 
         try:
             self.cursor.execute(f"""
@@ -24,6 +26,6 @@ class ReportDB(DBNode):
             # """, report_name)
             # report_id = self.cursor.fetchone()[0]
         finally:
-            if self.inner_conn:
-                self.conn.close()
+            # self.conn.close()
+            pass
             # return report_id # 추가 반환 데이터 필요

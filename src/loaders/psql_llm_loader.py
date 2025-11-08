@@ -81,6 +81,5 @@ class ReportExtractionsDB(DBNode):
                     self.conn.commit()  # reports에 report_extractions 적재 사실 업데이트 실패 시 적재 내용도 롤백
                     shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.path.join(os.getenv('REPORTS_FINISHED_PATH'))) # 정보 추출 파일 이동
                 finally:
-                    if self.inner_conn:
-                        self.conn.close()
+                    # self.conn.close()
                     return {"report_id": report_id, "llm_id": llm_id}

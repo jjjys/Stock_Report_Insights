@@ -150,9 +150,7 @@ class DBNode(Node):
     호출 함수(__call__)는 오버라이드 권장.
     """
     def __init__(self, conn=None, cursor=None):
-        self.inner_conn = conn is None
-
-        if not self.inner_conn:
+        if conn is not None:
             self.conn = conn
             self.cursor = cursor
         else:
@@ -181,9 +179,7 @@ class DBNode(Node):
             self.conn.commit()
             print("[DBNode] SQL Success")
         finally:
-            if self.inner_conn:
-                self.conn.close()
-
+            # self.conn.close()
             if "select" in query.lower() and "from" in query.lower():
                 return self.cursor.fetchall()
     
@@ -202,8 +198,7 @@ class DBWriter(DBNode):
         self.do_upsert = do_upsert
         self.toss_input = toss_input
 
-        self.inner_conn = conn is None
-        if not self.inner_conn:
+        if conn is not None:
             self.conn = conn
             self.cursor = cursor
         else:
@@ -242,8 +237,7 @@ class DBWriter(DBNode):
             self.conn.commit()
             print("DB INSERT Success")
         finally:
-            if self.inner_conn:
-                self.conn.close() # 노드별 책임 분리
+            # self.conn.close() # 노드별 책임 분리
             return data if self.toss_input else None
 
 
@@ -257,8 +251,7 @@ class DBSelector(DBNode):
         self.table = table
         self.cols = cols
 
-        self.inner_conn = conn is None
-        if not self.inner_conn:
+        if conn is not None:
             self.conn = conn
             self.cursor = cursor
         else:
@@ -280,9 +273,8 @@ class DBSelector(DBNode):
         """)
 
         result = self.cursor.fetchall()
-        
-        if self.inner_conn:
-            self.conn.close()
+        # self.conn.close()
+
         return result
     
 

@@ -22,5 +22,5 @@ class KrxDB(DBNode):
         else:
             self.conn.commit()
         finally:
-            if self.inner_conn:
-                self.conn.close()
+            # self.conn.close()
+            pass
