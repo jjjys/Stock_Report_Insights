@@ -11,7 +11,7 @@ class ReportDB(DBNode):
         try:
             self.cursor.execute(f"""
                 INSERT INTO reports (post_date, report_name, report_url)
-                VALUES (%s, %s, %s);
+                VALUES (%s, %s, %s) ON CONFLICT DO NOTHING;
             """, (post_date, report_name, report_url))
         except (Exception, psycopg2.Error) as e:
             print(f"[ReportDB] INSERT Error: table (REPORTS) {(post_date, report_name, report_url)}\n{e}")

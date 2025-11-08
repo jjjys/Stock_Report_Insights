@@ -13,7 +13,7 @@ class KrxDB(DBNode):
         try:
             self.cursor.execute("""
                 INSERT INTO krx (id, llm_id, target_price_reached_date, days_to_reach)
-                VALUES (%s, %s, %s, %s);
+                VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING;
             """, (report_id, llm_id, target_price_reached_date, days_to_reach))
         except (Exception, psycopg2.Error) as e:
             print(f"[ReportExtractionsDB] INSERT Error: table (KRX) {(report_id, llm_id, target_price_reached_date, days_to_reach)}\n{e}")
