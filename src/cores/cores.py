@@ -150,7 +150,9 @@ class DBNode(Node):
     호출 함수(__call__)는 오버라이드 권장.
     """
     def __init__(self, conn=None, cursor=None):
-        if conn is not None:
+        self.inner_conn = conn is None
+
+        if not self.inner_conn:
             self.conn = conn
             self.cursor = cursor
         else:
@@ -179,7 +181,8 @@ class DBNode(Node):
             self.conn.commit()
             print("[DBNode] SQL Success")
         finally:
-            self.conn.close()
+            if self.inner_conn:
+                self.conn.close()
 
             if "select" in query.lower() and "from" in query.lower():
                 return self.cursor.fetchall()
@@ -199,11 +202,12 @@ class DBWriter(DBNode):
         self.do_upsert = do_upsert
         self.toss_input = toss_input
 
-        if conn is not None:
+        self.inner_conn = conn is None
+        if not self.inner_conn:
             self.conn = conn
             self.cursor = cursor
         else:
-            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=POSTGRES_KEY)
+            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=os.getenv('POSTGRES_KEY'))
             self.cursor = self.conn.cursor()
 
     def __call__(self, data:dict, *args, **kwargs) -> dict:
@@ -238,7 +242,8 @@ class DBWriter(DBNode):
             self.conn.commit()
             print("DB INSERT Success")
         finally:
-            self.conn.close() # 노드별 책임 분리
+            if self.inner_conn:
+                self.conn.close() # 노드별 책임 분리
             return data if self.toss_input else None
 
 
@@ -252,11 +257,12 @@ class DBSelector(DBNode):
         self.table = table
         self.cols = cols
 
-        if conn is not None:
+        self.inner_conn = conn is None
+        if not self.inner_conn:
             self.conn = conn
             self.cursor = cursor
         else:
-            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=POSTGRES_KEY)
+            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=os.getenv('POSTGRES_KEY'))
             self.cursor = self.conn.cursor()
 
     def __call__(self, conditions:dict, *args, **kwargs) -> list[tuple]:  # WHERE 구문을 파이프라인 내 사용 어려움
@@ -274,8 +280,9 @@ class DBSelector(DBNode):
         """)
 
         result = self.cursor.fetchall()
-        self.conn.close()
-
+        
+        if self.inner_conn:
+            self.conn.close()
         return result
     
 
