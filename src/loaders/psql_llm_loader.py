@@ -2,6 +2,9 @@ from src.cores.cores import Node, DBNode
 
 import psycopg2
 import os, shutil
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class ReportExtractionsDB(DBNode):
