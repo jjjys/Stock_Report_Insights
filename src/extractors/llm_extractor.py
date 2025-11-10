@@ -49,8 +49,8 @@ class LLMFeatsExtractor(Node):
             essential_cols (list|tuple): 추출 항목 중 필수 항목명
         """
         self.docs_dir_path = docs_dir_path
-        self.llm_type = llm_type
-        self.llm_version = llm_version
+        self.llm_type = llm_type.lower()
+        self.llm_version = llm_version.lower()
         self.prompt = prompt
         self.interval = interval
         self.api_key = api_key
