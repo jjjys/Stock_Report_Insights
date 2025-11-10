@@ -45,7 +45,7 @@ class KrxTargetHitter(Node):
 
         return self.krx_target_hitter(**trt)
 
-    @dispatch(str, str, int)
+    @dispatch(str, str, int, int, int)
     def __call__(self, ticker:str, report_date:str, target_price:int, report_id:int, llm_id:int) -> dict:
         # 직접 호출 시 사용
         return self.krx_target_hitter(ticker, report_date, target_price, report_id, llm_id)
