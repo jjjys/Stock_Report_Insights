@@ -69,5 +69,4 @@ class KrxTargetHitter(Node):
             print(f"[KrxTargetHitter] Target Hit on ticker: {ticker} !!")
             return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": first_hit_date, "days_to_reach": (hit_dt - report_dt).days}
         else:
-            print(f"[KrxTargetHitter] Target NOT Hit on ticker: {ticker}")
-            return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": None, "days_to_reach": None}
+            raise ValueError(f"{ticker}: 필수 데이터 없음 (목표 주가 미도달)")
