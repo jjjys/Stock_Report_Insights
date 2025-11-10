@@ -54,7 +54,7 @@ class KrxTargetHitter(Node):
         start_date = report_date.replace("-", "")
         end_date = datetime.today().strftime("%Y%m%d")
 
-        print(f"[KrxTargetHitter] KRX 데이터 호출 중...")
+        print("[KrxTargetHitter] KRX 데이터 호출 중...")
         df = stock.get_market_ohlcv_by_date(start_date, end_date, ticker)
         df = df[["종가"]]
 
