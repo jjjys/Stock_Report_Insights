@@ -327,7 +327,16 @@ if __name__ == "__main__":
     #crawler = NaverPaySecuritiesCrawler(start_date='2021-02-16', end_date='2021-02-18')
     crawler = NaverPaySecuritiesCrawler(start_date='2025-11-07', end_date='2025-11-07')
     crawler.run()
-    print("데이터 확인") # crawler.data['종목분석 리포트']['data'][-1] 확인 해보기.
+    print(f"데이터 확인=========================")
+    print(f"종목명:{crawler.data['종목분석 리포트']['data'][0]['종목명']}")
+    print(f"제목:{crawler.data['종목분석 리포트']['data'][0]['제목']}")
+    print(f"증권사:{crawler.data['종목분석 리포트']['data'][0]['증권사']}")
+    print(f"Report_url:{crawler.data['종목분석 리포트']['data'][0]['Report_url']}")
+    print(f"작성일:{crawler.data['종목분석 리포트']['data'][0]['작성일']}")
+    print(f"조회수:{crawler.data['종목분석 리포트']['data'][0]['조회수']}")
+    print(f"report_name:{crawler.data['종목분석 리포트']['data'][0]['report_name']}")
+    print(f"Report_local_path:{crawler.data['종목분석 리포트']['data'][0]['Report_local_path']}")
+
 
 '''
 1. 수집 확인
