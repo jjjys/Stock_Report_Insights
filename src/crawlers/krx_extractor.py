@@ -48,7 +48,7 @@ class KrxTargetHitter(Node):
     @dispatch(str, str, int)
     def __call__(self, ticker:str, report_date:str, target_price:int, report_id:int, llm_id:int) -> dict:
         # 직접 호출 시 사용
-        return self.krx_target_hitter(ticker, report_date, target_price)
+        return self.krx_target_hitter(ticker, report_date, target_price, report_id, llm_id)
 
     def krx_target_hitter(self, ticker:str, report_date:str, target_price:int, report_id:int=None, llm_id:int=None) -> dict:
         start_date = report_date.replace("-", "")
