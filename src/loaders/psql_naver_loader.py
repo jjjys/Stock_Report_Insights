@@ -25,7 +25,3 @@ class ReportDB(DBNode):
             #     SELECT id FROM reports WHERE report_name = %s;
             # """, report_name)
             # report_id = self.cursor.fetchone()[0]
-        finally:
-            # self.conn.close()
-            pass
-            # return report_id # 추가 반환 데이터 필요

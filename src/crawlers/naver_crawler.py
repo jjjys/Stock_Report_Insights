@@ -73,7 +73,8 @@ class NaverPaySecuritiesCrawler:
             safe_date = date.replace(".", "")
             safe_stock = "".join(c for c in stock_name if c.isalnum() or c in (' ', '_')).replace(" ", "_") if stock_name else ""
             report_filename = f"{safe_date}_[{safe_stock}]_{safe_title}.pdf" if safe_stock else f"{safe_date}_{safe_title}.pdf"
-            report_path = os.path.join("data\\",category_dir, report_filename)
+            report_path = os.path.join("data",category_dir, report_filename)
+            os.makedirs(os.path.dirname(report_path), exist_ok=True)
             
             # 이미 파일이 존재하면 스킵 (중복 방지)
             if os.path.exists(report_path):
@@ -186,6 +187,8 @@ class NaverPaySecuritiesCrawler:
                     stock_name = row_data.get("종목명", "")  # 종목명 추출 (없으면 빈 문자열)
                     report_path = self.download_report(report_link, category, row_data["제목"], row_data["작성일"], stock_name)
                     row_data["Report_local_path"] = report_path if report_path else None 
+                    row_data["report_name"] \
+                        = f"{row_data["작성일"].replace(".", "")}_[{"".join(c for c in row_data["종목명"] if c.isalnum() or c in (' ', '_')).replace(" ", "_")}]_{"".join(c for c in row_data["제목"] if c.isalnum() or c in (' ', '_')).replace(" ", "_")}.pdf"
                 
                 # 중복 체크: 매번 빈 self.data이니 항상 추가 (파일 체크로 보완)
                 if row_data not in self.data[category]["data"]:

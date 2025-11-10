@@ -64,22 +64,14 @@ class ReportExtractionsDB(DBNode):
                 self.cursor.execute("""
                     INSERT INTO report_extractions (id, llm_id, investment_opinion, stock_id, published_date, current_price, target_price, analyst_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING;
-                """, (report_id, llm_id, investment_opinion.lower(), stock_id, published_date, current_price, target_price, analyst_id))
+                    UPDATE reports SET report_preprocessed = TRUE WHERE id = %s;
+                """, (report_id, llm_id, investment_opinion.lower(), stock_id, published_date, current_price, target_price, analyst_id, report_id))
             except (Exception, psycopg2.Error) as e:
+                self.conn.rollback()
                 print(f"[ReportExtractionsDB] INSERT Error: \ntable (REPORT_EXTRACTIONS) \
                       {(report_id, llm_id, investment_opinion.lower(), stock_id, published_date, current_price, target_price, analyst_id)}\n{e}")
             else:
-                try:
-                    self.cursor.execute("""
-                        UPDATE reports SET report_preprocessed = TRUE WHERE id = %s;
-                    """, (report_id,))
-                except (Exception, psycopg2.Error) as e:
-                    self.conn.rollback()
-                    print(f"[ReportExtractionsDB] UPDATE Error: table (REPORTS) {report_id}\n{e}")
-                    # raise
-                else:
-                    self.conn.commit()  # reports에 report_extractions 적재 사실 업데이트 실패 시 적재 내용도 롤백
-                    shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.path.join(os.getenv('REPORTS_FINISHED_PATH'))) # 정보 추출 파일 이동
-                finally:
-                    # self.conn.close()
-                    return {"report_id": report_id, "llm_id": llm_id}
+                self.conn.commit()  # reports에 report_extractions 적재 사실 업데이트 실패 시 적재 내용도 롤백
+                shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.path.join(os.getenv('REPORTS_FINISHED_PATH'))) # 정보 추출 파일 이동
+                
+                return {"report_id": report_id, "llm_id": llm_id}

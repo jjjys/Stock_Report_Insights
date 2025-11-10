@@ -14,13 +14,11 @@ class KrxDB(DBNode):
             self.cursor.execute("""
                 INSERT INTO krx (id, llm_id, target_price_reached_date, days_to_reach)
                 VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING;
-            """, (report_id, llm_id, target_price_reached_date, days_to_reach))
+                UPDATE report_extractions SET krx_loaded = TRUE WHERE id = %s AND llm_id = %s;
+            """, (report_id, llm_id, target_price_reached_date, days_to_reach, report_id, llm_id))
         except (Exception, psycopg2.Error) as e:
             print(f"[ReportExtractionsDB] INSERT Error: table (KRX) {(report_id, llm_id, target_price_reached_date, days_to_reach)}\n{e}")
             self.conn.rollback()
             raise
         else:
             self.conn.commit()
-        finally:
-            # self.conn.close()
-            pass

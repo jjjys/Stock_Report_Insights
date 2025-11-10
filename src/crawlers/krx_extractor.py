@@ -28,7 +28,9 @@ class KrxTargetHitter(Node):
         # 파이프라인 내 노드로 사용
         trt = {"ticker": trt.get(self.ticker_key, None),
                "report_date": trt.get(self.report_date_key, None),
-               "target_price": trt.get(self.target_price_key, None)}
+               "target_price": trt.get(self.target_price_key, None),
+               "report_id": trt.get("report_id", None),
+               "llm_id": trt.get("llm_id", None)}
 
         return self.krx_target_hitter(**trt)
 
@@ -44,7 +46,7 @@ class KrxTargetHitter(Node):
         return self.krx_target_hitter(**trt)
 
     @dispatch(str, str, int)
-    def __call__(self, ticker:str, report_date:str, target_price:int) -> dict:
+    def __call__(self, ticker:str, report_date:str, target_price:int, report_id:int, llm_id:int) -> dict:
         # 직접 호출 시 사용
         return self.krx_target_hitter(ticker, report_date, target_price)
 
@@ -64,6 +66,7 @@ class KrxTargetHitter(Node):
             report_dt = datetime.strptime(report_date, "%Y-%m-%d")
             hit_dt = datetime.strptime(first_hit_date, "%Y-%m-%d")
 
+            print(f"[KrxTargetHitter] KRX 데이터 호출 성공 !!")
             return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": first_hit_date, "days_to_reach": (hit_dt - report_dt).days}
         else:
             return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": None, "days_to_reach": None}
