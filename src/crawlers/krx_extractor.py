@@ -66,7 +66,8 @@ class KrxTargetHitter(Node):
             report_dt = datetime.strptime(report_date, "%Y-%m-%d")
             hit_dt = datetime.strptime(first_hit_date, "%Y-%m-%d")
 
-            print(f"[KrxTargetHitter] KRX 데이터 호출 성공 !!")
+            print(f"[KrxTargetHitter] Target Hit on ticker: {ticker} !!")
             return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": first_hit_date, "days_to_reach": (hit_dt - report_dt).days}
         else:
+            print(f"[KrxTargetHitter] Target NOT Hit on ticker: {ticker}")
             return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": None, "days_to_reach": None}
