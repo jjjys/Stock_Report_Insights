@@ -49,17 +49,17 @@ class NaverPaySecuritiesCrawler:
         # 체크포인트 비활성화: 항상 빈 데이터로 초기화
         self.data = {cat: {"data": []} for cat in self.categories}
 
-    def save_data(self):
-        """수집된 데이터를 JSON 파일에 저장합니다."""
-        try:
-            final_data = {cat: self.data[cat]["data"] for cat in self.categories}
-            with open(self.output_file, 'w', encoding='utf-8') as f:
-                json.dump(final_data, f, ensure_ascii=False, indent=4)
-            print(f"데이터가 {self.output_file}에 저장되었습니다.")
-            logging.info(f"데이터가 {self.output_file}에 저장되었습니다.")
-        except Exception as e:
-            print(f"데이터 저장 중 에러: {e}")
-            logging.error(f"데이터 저장 중 에러: {e}")
+    # def save_data(self):
+    #     """수집된 데이터를 JSON 파일에 저장합니다."""
+    #     try:
+    #         final_data = {cat: self.data[cat]["data"] for cat in self.categories}
+    #         with open(self.output_file, 'w', encoding='utf-8') as f:
+    #             json.dump(final_data, f, ensure_ascii=False, indent=4)
+    #         print(f"데이터가 {self.output_file}에 저장되었습니다.")
+    #         logging.info(f"데이터가 {self.output_file}에 저장되었습니다.")
+    #     except Exception as e:
+    #         print(f"데이터 저장 중 에러: {e}")
+    #         logging.error(f"데이터 저장 중 에러: {e}")
 
     def download_report(self, report_url, category, title, date, stock_name=""):  
         """Report 파일을 다운로드하여 저장합니다."""
@@ -73,7 +73,9 @@ class NaverPaySecuritiesCrawler:
             safe_date = date.replace(".", "")
             safe_stock = "".join(c for c in stock_name if c.isalnum() or c in (' ', '_')).replace(" ", "_") if stock_name else ""
             report_filename = f"{safe_date}_[{safe_stock}]_{safe_title}.pdf" if safe_stock else f"{safe_date}_{safe_title}.pdf"
-            report_path = os.path.join("data\\",category_dir, report_filename)
+
+            report_path = os.path.join("data", category_dir, report_filename)
+            os.makedirs(os.path.dirname(report_path), exist_ok=True)  # 상위 디렉토리 생성 보장
             
             # 이미 파일이 존재하면 스킵 (중복 방지)
             if os.path.exists(report_path):
@@ -186,6 +188,10 @@ class NaverPaySecuritiesCrawler:
                     stock_name = row_data.get("종목명", "")  # 종목명 추출 (없으면 빈 문자열)
                     report_path = self.download_report(report_link, category, row_data["제목"], row_data["작성일"], stock_name)
                     row_data["Report_local_path"] = report_path if report_path else None 
+                    date = row_data["작성일"].replace(".", "")
+                    stock = ''.join(c for c in row_data["종목명"] if c.isalnum() or c in (" ", "_")).replace(" ", "_")
+                    title = ''.join(c for c in row_data["제목"] if c.isalnum() or c in (" ", "_")).replace(" ", "_")
+                    row_data["report_name"] = f"{date}_[{stock}]_{title}.pdf"
                 
                 # 중복 체크: 매번 빈 self.data이니 항상 추가 (파일 체크로 보완)
                 if row_data not in self.data[category]["data"]:
@@ -269,7 +275,7 @@ class NaverPaySecuritiesCrawler:
     def run(self, driver=None):  # 변경: driver 파라미터 옵션으로 (외부에서 전달 가능)
         """크롤러를 실행하는 메인 메서드입니다."""
         options = uc.ChromeOptions()
-        #options.add_argument('--headless')  # headless 모드
+        options.add_argument('--headless')  # headless 모드
         options.add_argument('--incognito')  # 시크릿 모드
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
@@ -303,7 +309,7 @@ class NaverPaySecuritiesCrawler:
                 print(f"{category} 처리 중 (기간: {self.start_date} ~ {self.end_date})")
                 logging.info(f"{category} 처리 중")
                 self.crawl_category(driver, category, url) 
-            self.save_data()
+            # self.save_data()
             print("네이버 제공 증권사 레포트 웹크롤링 작업 완료.")
             logging.info("네이버 제공 증권사 레포트 웹크롤링 작업 완료.")
         except Exception as e:
@@ -316,11 +322,21 @@ class NaverPaySecuritiesCrawler:
 
 if __name__ == "__main__":
     # 예시: 기본 오늘 날짜 사용 (매번 처음부터 수집)
-    crawler = NaverPaySecuritiesCrawler()
+    #crawler = NaverPaySecuritiesCrawler()
     #crawler = NaverPaySecuritiesCrawler(start_date='2025-10-02', end_date='2025-10-02')
     #crawler = NaverPaySecuritiesCrawler(start_date='2021-02-16', end_date='2021-02-18')
+    crawler = NaverPaySecuritiesCrawler(start_date='2025-11-07', end_date='2025-11-07')
     crawler.run()
-    print("데이터 확인") # crawler.data['종목분석 리포트']['data'][-1] 확인 해보기.
+    print(f"데이터 확인=========================")
+    print(f"종목명:{crawler.data['종목분석 리포트']['data'][0]['종목명']}")
+    print(f"제목:{crawler.data['종목분석 리포트']['data'][0]['제목']}")
+    print(f"증권사:{crawler.data['종목분석 리포트']['data'][0]['증권사']}")
+    print(f"Report_url:{crawler.data['종목분석 리포트']['data'][0]['Report_url']}")
+    print(f"작성일:{crawler.data['종목분석 리포트']['data'][0]['작성일']}")
+    print(f"조회수:{crawler.data['종목분석 리포트']['data'][0]['조회수']}")
+    print(f"report_name:{crawler.data['종목분석 리포트']['data'][0]['report_name']}")
+    print(f"Report_local_path:{crawler.data['종목분석 리포트']['data'][0]['Report_local_path']}")
+
 
 '''
 1. 수집 확인
