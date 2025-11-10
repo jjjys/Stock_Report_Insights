@@ -1,6 +1,7 @@
 from cores.cores import DBNode
 
-import psycopg2, os
+import psycopg2
+import os
 
 
 class KrxDB(DBNode):
