@@ -35,6 +35,10 @@ class Node:
     def __mul__(self, workers):
         """멀티스레딩을 쉽게 적용할 수 있는 연산자"""
         return MultiThreadNode(self, max_workers=workers)
+    
+    def __floordiv__(self, other):
+        """다중 출력 노드와 단일 처리 노드를 연결"""
+        return Pipeline([self, MapNode(other)])
 
     def __call__(self, data):
         """각 노드가 수행할 구체적 처리 로직 (자식 클래스에서 구현)"""
