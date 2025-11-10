@@ -150,9 +150,7 @@ class DBNode(Node):
     호출 함수(__call__)는 오버라이드 권장.
     """
     def __init__(self, conn=None, cursor=None):
-        self.inner_conn = conn is None
-
-        if not self.inner_conn:
+        if conn is not None:
             self.conn = conn
             self.cursor = cursor
         else:
@@ -179,14 +177,33 @@ class DBNode(Node):
             print(f"[DBNode] Error: {e}")
         else:
             self.conn.commit()
-            print("[DBNode] SQL Success")
-        finally:
-            if self.inner_conn:
-                self.conn.close()
+            print("[DBNode] DB Request Success !!")
 
             if "select" in query.lower() and "from" in query.lower():
                 return self.cursor.fetchall()
     
+
+class DBClose(DBNode):
+    """
+    DB 작업 종료 후 반드시 사용 (MultiThreadNode 혹은 MapNode 내에서 사용하지 않음 권장)
+
+    Args:
+        last_commit (bool): 마지막 커밋 여부 (safe close)
+        toss_input (bool): 입력 데이터 출력 여부 (후속 노드 데이터 전달)
+    """
+    def __init__(self, last_commit:bool=True, toss_input:bool=True):
+        self.last_commit = last_commit
+        self.toss_input = toss_input
+
+    def __call__(self, result, *args, **kwargs):
+        if self.last_commit:
+            self.conn.commit()
+
+        self.conn.close()
+
+        if self.toss_input:
+            return result
+
 
 class DBWriter(DBNode):
     def __init__(self, table:str, pk:list[str]|tuple[str], do_upsert:bool=False, toss_input:bool=False, conn=None, cursor=None):
@@ -202,8 +219,7 @@ class DBWriter(DBNode):
         self.do_upsert = do_upsert
         self.toss_input = toss_input
 
-        self.inner_conn = conn is None
-        if not self.inner_conn:
+        if conn is not None:
             self.conn = conn
             self.cursor = cursor
         else:
@@ -240,10 +256,8 @@ class DBWriter(DBNode):
             print(f"[DBWriter] DB INSERT Error: {e}")
         else:
             self.conn.commit()
-            print("DB INSERT Success")
-        finally:
-            if self.inner_conn:
-                self.conn.close() # 노드별 책임 분리
+            print("DB INSERT Success !!")
+
             return data if self.toss_input else None
 
 
@@ -257,8 +271,7 @@ class DBSelector(DBNode):
         self.table = table
         self.cols = cols
 
-        self.inner_conn = conn is None
-        if not self.inner_conn:
+        if conn is not None:
             self.conn = conn
             self.cursor = cursor
         else:
@@ -279,11 +292,7 @@ class DBSelector(DBNode):
             WHERE { " AND ".join([f"{k} {v}" for k, v in conditions.items()]) };
         """)
 
-        result = self.cursor.fetchall()
-        
-        if self.inner_conn:
-            self.conn.close()
-        return result
+        return self.cursor.fetchall()
     
 
 # --------------------------

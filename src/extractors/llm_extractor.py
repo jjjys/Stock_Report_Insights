@@ -49,8 +49,8 @@ class LLMFeatsExtractor(Node):
             essential_cols (list|tuple): 추출 항목 중 필수 항목명
         """
         self.docs_dir_path = docs_dir_path
-        self.llm_type = llm_type
-        self.llm_version = llm_version
+        self.llm_type = llm_type.lower()
+        self.llm_version = llm_version.lower()
         self.prompt = prompt
         self.interval = interval
         self.api_key = api_key
@@ -67,7 +67,7 @@ class LLMFeatsExtractor(Node):
             doc (str): 단일 참고문서 파일명
         Returns: 참고문서에서 추출된 정보 (dict)
         """
-        print(f"[LLMFeatsExtractor] {self.llm_type}(으)로 데이터 추출 중...")
+        print(f"[LLMFeatsExtractor] {self.llm_type}(으)로 데이터 추출 중... : {doc}")
         extractor = self.model_map.get(self.llm_type, None)
         file_path = os.path.join(self.docs_dir_path, doc)
 
@@ -85,9 +85,10 @@ class LLMFeatsExtractor(Node):
                 response["llm_type"] = self.llm_type
                 response["llm_version"] = self.llm_version
 
+                print(f"[LLMFeatsExtractor] {self.llm_type} 추출 성공 !!")
                 return response
             else:
-                raise ValueError(f"{os.path.basename(file_path)} 필수 데이터 없음: {response}")
+                raise ValueError(f"{doc} 필수 데이터 없음: {response}")
 
         except Exception as e:
             print(f"[LLMFeatsExtractor] {self.llm_type}-{self.llm_version} Error: {e}")
