@@ -43,7 +43,7 @@ class KrxHitDump(DBNode):
             self.conn = conn
             self.cursor = cursor
         else:
-            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=os.getenv('POSTGRES_KEY'))
+            self.conn = psycopg2.connect(host=os.getenv('DB_HOST'), dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'))
             self.cursor = self.conn.cursor()
 
     def __call__(self, *arg, **kwargs):

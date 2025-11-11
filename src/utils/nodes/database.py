@@ -15,7 +15,7 @@ class DBNode(Node):
             self.conn = conn
             self.cursor = cursor
         else:
-            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=os.getenv('POSTGRES_KEY'))
+            self.conn = psycopg2.connect(host=os.getenv('DB_HOST'), dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'))
             self.cursor = self.conn.cursor()
 
     def __call__(self, query:str, *args, **kwargs) -> list[tuple]:
@@ -62,7 +62,7 @@ class DBWriter(DBNode):
             self.conn = conn
             self.cursor = cursor
         else:
-            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=os.getenv('POSTGRES_KEY'))
+            self.conn = psycopg2.connect(host=os.getenv('DB_HOST'), dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'))
             self.cursor = self.conn.cursor()
 
     def __call__(self, data:dict, *args, **kwargs) -> dict:
@@ -114,7 +114,7 @@ class DBSelector(DBNode):
             self.conn = conn
             self.cursor = cursor
         else:
-            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=os.getenv('POSTGRES_KEY'))
+            self.conn = psycopg2.connect(host=os.getenv('DB_HOST'), dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'))
             self.cursor = self.conn.cursor()
 
     def __call__(self, conditions:dict, *args, **kwargs) -> list[tuple]:  # WHERE 구문을 파이프라인 내 사용 어려움
