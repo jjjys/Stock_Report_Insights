@@ -32,7 +32,14 @@ Stock_Report_Insights/
 │   ├── utils/                # 공통 유틸리티
 │   │   ├── __init__.py
 │   │   ├── logger.py         # 로깅 설정
-│   │   └── notifier.py       # Discord 알림 (discord.py 사용)
+│   │   ├── notifier.py       # Discord 알림 (discord.py 사용)
+│   │   └── nodes
+│   │       ├── __init__.py
+│   │       ├── cores.py
+│   │       ├── database.py
+│   │       ├── scheme.py
+|   |       └── users.py
+│   │
 │   └── main.py               # CLI 엔트리포인트 (Airflow 외 수동 실행용)
 │
 ├── dags/                     # Airflow DAG 파일들
