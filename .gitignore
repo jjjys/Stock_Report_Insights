@@ -8,7 +8,7 @@ data
 .env
 
 # 로그 파일
-crawler.log
+logs
 
 # 컴파일
 __pycache__
