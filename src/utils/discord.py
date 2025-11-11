@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     ############## processed(처리 완료 경로)에 있는 파일 처리(Discord 전송 및 삭제).
     #base_dir = r"C://Users//user//Desktop//Stock_Report_Insights//Stock_Report_Insights//data//processed"  # 전송할 파일 경로
-    base_dir = os.path.join(PROJECT_ROOT, "data", "processed")
+    base_dir = os.path.join(PROJECT_ROOT, "data", "reports_processed")
     processed_list = get_file_list(base_dir)
     if not processed_list:  # 파일 리스트가 비어 있는 경우
         print("📂 처리할 파일이 없습니다.")
