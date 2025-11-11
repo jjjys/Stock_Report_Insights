@@ -1,6 +1,7 @@
-from cores.cores import DBNode
+from utils.nodes.database import DBNode
 
 import psycopg2
+
 
 class ReportDB(DBNode):
     def __call__(self, values:dict):

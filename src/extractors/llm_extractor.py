@@ -1,4 +1,4 @@
-from cores.cores import Node
+from utils.nodes.cores import Node
 
 from google import genai
 import os, time, json
