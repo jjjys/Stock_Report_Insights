@@ -58,6 +58,7 @@ def send_discord_file(webhook_url, file_path, message='파일 전송 테스트')
     else:
         print(f"❌ 파일 전송 실패: {response.status_code}")
         print(f"응답 내용: {response.text}")
+    return response.status_code
 
 def delete_file(file_path):
     """파일 삭제 함수"""    
@@ -87,15 +88,15 @@ if __name__ == "__main__":
     report_backup_WH = os.getenv("report_backup_WEB_HOOK")
     target_price_notification_WH = os.getenv("target_price_notification_WEB_HOOK")
     
-    ############## 테스트 메시지 전송
+    ############## 메시지 전송
     #send_discord_message(target_price_notification_WH, "안녕하세요! 이것은 테스트 메시지입니다.")
     
-    ############## 테스트 파일 전송(이미지, PDF, 동영상 등)
+    ############## 파일 전송(이미지, PDF, 동영상 등)
     #test_file_path = r"C:\Users\user\Desktop\Stock_Report_Insights\Stock_Report_Insights\data\reports\종목분석_리포트\251107_[BGF리테일]_3Q25_Review__격차를_줄여라.pdf"  # 전송할 파일 경로
     #test_file_path = r"C://Users//user//Desktop//Stock_Report_Insights//Stock_Report_Insights//data//reports//종목분석_리포트//251107_[BGF리테일]_3Q25_Review__격차를_줄여라.pdf"  # 전송할 파일 경로
     #send_discord_file(report_backup_WH, test_file_path, "Discord 레포트 전송 후 삭제 완료.")
 
-    ############## 처리 완료 경로에 있는 파일 처리(Discord 전송 및 삭제).
+    ############## processed(처리 완료 경로)에 있는 파일 처리(Discord 전송 및 삭제).
     #base_dir = r"C://Users//user//Desktop//Stock_Report_Insights//Stock_Report_Insights//data//processed"  # 전송할 파일 경로
     base_dir = os.path.join(PROJECT_ROOT, "data", "processed")
     processed_list = get_file_list(base_dir)
