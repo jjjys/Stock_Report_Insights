@@ -45,7 +45,7 @@ class KrxTargetHitter(Node):
 
         return self.krx_target_hitter(**trt)
 
-    @dispatch(str, str, int)
+    @dispatch(str, str, int, int, int)
     def __call__(self, ticker:str, report_date:str, target_price:int, report_id:int, llm_id:int) -> dict:
         # 직접 호출 시 사용
         return self.krx_target_hitter(ticker, report_date, target_price, report_id, llm_id)
@@ -54,7 +54,7 @@ class KrxTargetHitter(Node):
         start_date = report_date.replace("-", "")
         end_date = datetime.today().strftime("%Y%m%d")
 
-        print(f"[KrxTargetHitter] KRX 데이터 호출 중...")
+        print("[KrxTargetHitter] KRX 데이터 호출 중...")
         df = stock.get_market_ohlcv_by_date(start_date, end_date, ticker)
         df = df[["종가"]]
 
@@ -66,7 +66,7 @@ class KrxTargetHitter(Node):
             report_dt = datetime.strptime(report_date, "%Y-%m-%d")
             hit_dt = datetime.strptime(first_hit_date, "%Y-%m-%d")
 
-            print(f"[KrxTargetHitter] KRX 데이터 호출 성공 !!")
+            print("[KrxTargetHitter] Target Hit !!")
             return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": first_hit_date, "days_to_reach": (hit_dt - report_dt).days}
         else:
-            return {"report_id": report_id, "llm_id": llm_id, "target_price_reached_date": None, "days_to_reach": None}
+            raise ValueError("[KrxTargetHitter] 목표 주가 미도달")
