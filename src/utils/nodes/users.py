@@ -1,4 +1,4 @@
-from cores import Node
+from utils.nodes.cores import Node
 
 
 # --------------------------

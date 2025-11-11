@@ -1,4 +1,4 @@
-from database import DBNode
+from utils.nodes.database import DBNode
 
 import yaml
 from dataclasses import dataclass, field
