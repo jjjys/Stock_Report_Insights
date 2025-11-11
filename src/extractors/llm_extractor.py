@@ -81,7 +81,7 @@ class LLMFeatsExtractor(Node):
             response = extractor(file_path, self.llm_version, self.prompt, self.prompt, self.api_key)
 
             if self.is_valid_response(response):
-                response["report_name"] = os.path.basename(file_path)
+                response["report_name"] = doc
                 response["llm_type"] = self.llm_type
                 response["llm_version"] = self.llm_version
 
