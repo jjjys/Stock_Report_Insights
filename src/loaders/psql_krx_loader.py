@@ -1,6 +1,7 @@
-from cores.cores import DBNode
+from utils.nodes.database import DBNode
 
 import psycopg2
+import os
 
 
 class KrxDB(DBNode):
@@ -22,3 +23,38 @@ class KrxDB(DBNode):
             raise
         else:
             self.conn.commit()
+
+
+class KrxHitDump(DBNode):
+    def __init__(self, ticker_key:str=None, report_date_key:str=None, target_price_key:str=None, conn=None, cursor=None):
+        """
+        파이프라인 내 노드로 사용 시 반드시 작성
+
+        Args:
+            ticker_key (str): [LLMFeatsExtractor] 종목코드 key
+            report_date_key (str): [LLMFeatsExtractor] 작성일 key
+            target_price_key (str): [LLMFeatsExtractor] 목표 주가 key
+        """
+        self.ticker_key = ticker_key
+        self.report_date_key = report_date_key
+        self.target_price_key = target_price_key
+
+        if conn is not None:
+            self.conn = conn
+            self.cursor = cursor
+        else:
+            self.conn = psycopg2.connect(host="localhost", dbname="stockdb", user="stock", password=os.getenv('POSTGRES_KEY'))
+            self.cursor = self.conn.cursor()
+
+    def __call__(self, *arg, **kwargs):
+        self.cursor.execute("""
+            SELECT r.id, r.llm_id, s.ticker, TO_CHAR(r.published_date, 'YYYY-MM-DD'), r.target_price
+            FROM report_extractions r
+            LEFT JOIN stock_info s ON r.stock_id = s.stock_id 
+            WHERE r.krx_loaded = False;
+        """)
+
+        cols = ("report_id", "llm_id", self.ticker_key, self.report_date_key, self.target_price_key)
+        
+        # return self.cursor.fetchall()
+        return [dict(zip(cols, row)) for row in self.cursor.fetchall()]
