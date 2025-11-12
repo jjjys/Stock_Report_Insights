@@ -11,8 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
-from utils.logger import setup_logger, log_function
-logger = setup_logger()
+from utils.logger import log_function
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
