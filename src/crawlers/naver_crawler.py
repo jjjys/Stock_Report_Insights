@@ -11,15 +11,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
+from utils.logger import log_function
 
-# 로깅 설정
-logging.basicConfig(
-    filename='crawler.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 class NaverPaySecuritiesCrawler:
+    @log_function(logging.INFO)
     def __init__(self, max_pages=50, start_date=None, end_date=None):
         self.base_url = "https://finance.naver.com"
         self.categories = {
@@ -31,8 +28,8 @@ class NaverPaySecuritiesCrawler:
             "채권분석 리포트": "/research/debenture_list.naver"
         }
         # self.checkpoint_file = "crawler_checkpoint.json"  # 주석: 체크포인트 비활성화
-        self.output_file = "naver_securities_reports.json"
-        self.report_dir = "reports"  
+        self.output_file = os.path.join(PROJECT_ROOT, "data", "naver_securities_reports.json")  # JSON 파일도 루트 기준 경로
+        self.report_dir = os.path.join(PROJECT_ROOT, "data", "reports")  # 프로젝트 루트 기준 경로
         self.max_retries = 3
         self.wait_time = 5  # 대기 시간 증가
         self.max_pages = max_pages  # 수집 페이지 최대치. 필요에 따라 조정 가능
@@ -49,18 +46,7 @@ class NaverPaySecuritiesCrawler:
         # 체크포인트 비활성화: 항상 빈 데이터로 초기화
         self.data = {cat: {"data": []} for cat in self.categories}
 
-    # def save_data(self):
-    #     """수집된 데이터를 JSON 파일에 저장합니다."""
-    #     try:
-    #         final_data = {cat: self.data[cat]["data"] for cat in self.categories}
-    #         with open(self.output_file, 'w', encoding='utf-8') as f:
-    #             json.dump(final_data, f, ensure_ascii=False, indent=4)
-    #         print(f"데이터가 {self.output_file}에 저장되었습니다.")
-    #         logging.info(f"데이터가 {self.output_file}에 저장되었습니다.")
-    #     except Exception as e:
-    #         print(f"데이터 저장 중 에러: {e}")
-    #         logging.error(f"데이터 저장 중 에러: {e}")
-
+    @log_function(logging.INFO)
     def download_report(self, report_url, category, title, date, stock_name=""):  
         """Report 파일을 다운로드하여 저장합니다."""
         try:
@@ -80,7 +66,6 @@ class NaverPaySecuritiesCrawler:
             # 이미 파일이 존재하면 스킵 (중복 방지)
             if os.path.exists(report_path):
                 print(f"{report_filename} 이미 존재. 다운로드 스킵.")
-                logging.info(f"{report_filename} 이미 존재. 다운로드 스킵.")
                 return report_path
             
             # Report 다운로드
@@ -94,17 +79,15 @@ class NaverPaySecuritiesCrawler:
             if response.status_code == 200:
                 with open(report_path, 'wb') as f:
                     f.write(response.content)
-                logging.info(f"{report_filename} 다운로드 완료.")
                 return report_path
             else:
                 print(f"{report_filename} 다운로드 실패: HTTP {response.status_code}")
-                logging.error(f"{report_filename} 다운로드 실패: HTTP {response.status_code}")
                 return None
         except Exception as e:
             print(f"Report 다운로드 중 에러: {e}")
-            logging.error(f"Report 다운로드 중 에러: {e}")
             return None
         
+    @log_function(logging.INFO)
     def navigate_to_page(self, driver, url, page_num):
         """특정 페이지로 이동합니다. (날짜 필터링 쿼리 추가)"""
         for attempt in range(self.max_retries):
@@ -113,7 +96,6 @@ class NaverPaySecuritiesCrawler:
                 query_params = f"?keyword=&searchType=writeDate&writeFromDate={self.start_date}&writeToDate={self.end_date}&page={page_num}"
                 full_url = f"{self.base_url}{url}{query_params}"
                 print(f"{full_url}로 이동 중 (시도 {attempt + 1}/{self.max_retries})")
-                logging.info(f"{full_url}로 이동 중")
                 driver.get(full_url)
                 WebDriverWait(driver, self.wait_time).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "#contentarea_left > div.box_type_m > table.type_1"))
@@ -125,17 +107,16 @@ class NaverPaySecuritiesCrawler:
                 return True
             except Exception as e:
                 print(f"페이지 {page_num} 이동 중 에러: {e}")
-                logging.error(f"페이지 {page_num} 이동 중 에러: {e}")
                 if attempt == self.max_retries - 1:
                     return False
                 time.sleep(random.uniform(1, 3))
         return False
 
+    @log_function(logging.INFO)
     def extract_table_data(self, driver, category):
         """현재 페이지에서 테이블 데이터를 추출합니다."""
         try:
             print(f"{category} 카테고리 데이터 추출 중")
-            logging.info(f"{category} 카테고리 데이터 추출 중")
             table = driver.find_element(By.CSS_SELECTOR, "#contentarea_left > div.box_type_m > table.type_1")
             rows = table.find_elements(By.TAG_NAME, "tr")[1:]  # 헤더 행 제외
             data_list = []
@@ -199,9 +180,9 @@ class NaverPaySecuritiesCrawler:
             return data_list
         except Exception as e:
             print(f"{category} 테이블 데이터 추출 중 에러: {e}")
-            logging.error(f"{category} 테이블 데이터 추출 중 에러: {e}")
             return []
         
+    @log_function(logging.INFO)
     def parse_max_page_from_pagination(self, driver):
             """하단 페이지네이션에서 [맨뒤] 링크의 page 값을 추출해 최대 페이지 반환.
             실패 시 self.max_pages 반환.
@@ -223,21 +204,19 @@ class NaverPaySecuritiesCrawler:
                 if page_str:
                     max_page = int(page_str)
                     print(f"최대 페이지 파싱 성공: {max_page}")
-                    logging.info(f"최대 페이지 파싱: {max_page}")
                     return max_page
                 else:
                     raise ValueError("page 쿼리 파라미터 없음")
             except Exception as e:
                 print(f"최대 페이지 파싱 실패 ({e}). 기본 {self.max_pages}페이지로 fallback.")
-                logging.warning(f"최대 페이지 파싱 실패: {e}. Fallback to {self.max_pages}")
                 return self.max_pages  # 실패 시 기본 최대 페이지 반환
-            
+    
+    @log_function(logging.INFO)
     def crawl_category(self, driver, category, url):
         """주어진 카테고리의 모든 페이지를 크롤링합니다. (매번 페이지 1부터 시작)"""
         try:
             page_num = 1
             print(f"{category} 크롤링 시작 (페이지 {page_num}부터, 기간: {self.start_date} ~ {self.end_date})")
-            logging.info(f"{category} 크롤링 시작")
 
             # 첫 페이지로 이동
             if not self.navigate_to_page(driver, url, page_num):
@@ -251,27 +230,24 @@ class NaverPaySecuritiesCrawler:
             while page_num <= self.max_pages:
                 if not self.navigate_to_page(driver, url, page_num):
                     print(f"{category}의 페이지 {page_num} 이동 실패. 중단합니다.")
-                    logging.warning(f"{category}의 페이지 {page_num} 이동 실패")
                     break
 
                 page_data = self.extract_table_data(driver, category)
                 if not page_data:
                     print(f"{category}의 페이지 {page_num}에서 데이터 없음. 중단합니다.")
-                    logging.info(f"{category}의 페이지 {page_num}에서 데이터 없음")
                     break
 
                 self.data[category]["data"].extend(page_data)  # 빈 self.data이니 전체 추가
                 # self.save_checkpoint()  # 주석: 체크포인트 저장 비활성화
                 print(f"{category}의 페이지 {page_num}에서 {len(page_data)}개 레코드 수집")
-                logging.info(f"{category}의 페이지 {page_num}에서 {len(page_data)}개 레코드 수집")
                 time.sleep(random.uniform(1, 3))
 
                 page_num += 1
         except Exception as e:
             print(f"{category} 크롤링 중 에러: {e}")
-            logging.error(f"{category} 크롤링 중 에러: {e}")
             # self.save_checkpoint()  # 주석: 에러 시 저장 비활성화
 
+    @log_function(logging.INFO)
     def run(self, driver=None):  # 변경: driver 파라미터 옵션으로 (외부에서 전달 가능)
         """크롤러를 실행하는 메인 메서드입니다."""
         options = uc.ChromeOptions()
@@ -296,7 +272,6 @@ class NaverPaySecuritiesCrawler:
             )
             driver.set_window_size(1920, 1080)
             print("브라우저 설정 완료.")
-            logging.info("브라우저 설정 완료.")
             # 크롤링 메인 작업
             for category, url in self.categories.items():
                 # 특정 카테고리 스킵
@@ -307,14 +282,11 @@ class NaverPaySecuritiesCrawler:
                 or category == '채권분석 리포트':
                     continue
                 print(f"{category} 처리 중 (기간: {self.start_date} ~ {self.end_date})")
-                logging.info(f"{category} 처리 중")
                 self.crawl_category(driver, category, url) 
             # self.save_data()
             print("네이버 제공 증권사 레포트 웹크롤링 작업 완료.")
-            logging.info("네이버 제공 증권사 레포트 웹크롤링 작업 완료.")
         except Exception as e:
             print(f"메인 실행 중 에러: {e}")
-            logging.error(f"메인 실행 중 에러: {e}")
             # self.save_checkpoint()  # 주석: 에러 시 저장 비활성화
         finally:
             if driver is not None:
