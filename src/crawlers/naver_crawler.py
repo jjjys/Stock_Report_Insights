@@ -12,6 +12,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+
 # 로깅 설정
 logging.basicConfig(
     filename='crawler.log',
@@ -31,8 +33,8 @@ class NaverPaySecuritiesCrawler:
             "채권분석 리포트": "/research/debenture_list.naver"
         }
         # self.checkpoint_file = "crawler_checkpoint.json"  # 주석: 체크포인트 비활성화
-        self.output_file = "naver_securities_reports.json"
-        self.report_dir = "reports"  
+        self.output_file = os.path.join(PROJECT_ROOT, "data", "naver_securities_reports.json")  # JSON 파일도 루트 기준 경로
+        self.report_dir = os.path.join(PROJECT_ROOT, "data", "reports")  # 프로젝트 루트 기준 경로
         self.max_retries = 3
         self.wait_time = 5  # 대기 시간 증가
         self.max_pages = max_pages  # 수집 페이지 최대치. 필요에 따라 조정 가능
