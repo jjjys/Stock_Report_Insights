@@ -48,13 +48,25 @@ def log_function(level=logging.INFO):
         @wraps(func)
         def wrapper(*args, **kwargs):
             logger = logging.getLogger(func.__module__)
-            logger.log(level, f"{func.__name__} [PARAMS]: ({args}, {kwargs})")
+            func_name = func.__name__   # 함수명 (또는 메서드명)
+
+            # 클래스명 추론
+            cls_name = None
+            if args:
+                instance = args[0]
+                if hasattr(instance, "__class__"):  # 첫 번째 인자가 self인 경우
+                    cls_name = instance.__class__.__name__
+
+            full_name = f"{cls_name}.{func_name}" if cls_name else func_name
+            logger.log(level, f"{full_name} [PARAMS]: {args}, {kwargs}")
+            
             try:
                 result = func(*args, **kwargs)
-                logger.log(level, f"{func.__name__} [RETURN]: ({result})")
+                logger.log(level, f"{full_name} [RETURN]: {result}")
                 return result
             except Exception as e:
-                logger.error(f"Exception in {func.__name__}: {e}", exc_info=True)
+                logger.error(f"Exception in {full_name}: {e}", exc_info=True)
                 raise
+            
         return wrapper
     return decorator
