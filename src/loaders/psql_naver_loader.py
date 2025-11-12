@@ -1,6 +1,12 @@
+from utils.nodes.cores import Node
 from utils.nodes.database import DBNode
 
 import psycopg2
+
+
+class Crawler(Node):
+    def __call__(self, crawler:list):
+        return crawler
 
 
 class ReportDB(DBNode):
