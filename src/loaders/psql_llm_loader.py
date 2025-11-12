@@ -1,5 +1,8 @@
 from utils.nodes.database import DBNode
 
+from utils.logger import log_function
+import logging
+
 import psycopg2
 import os, shutil
 from dotenv import load_dotenv
@@ -8,6 +11,7 @@ load_dotenv()
 
 
 class ReportExtractionsDB(DBNode):
+    @log_function(logging.INFO)
     def __call__(self, values:dict) -> dict: # (report_name, llm_type, llm_version, stock, ticker, investment_opinion, published_date, current_price, target_price, author, firm)
         report_name = values["report_name"]
         llm_type = values["llm_type"]
@@ -73,6 +77,6 @@ class ReportExtractionsDB(DBNode):
             else:
                 self.conn.commit()  # reports에 report_extractions 적재 사실 업데이트 실패 시 적재 내용도 롤백
                 os.makedirs(os.getenv('REPORTS_FINISHED_PATH'), exist_ok=True)
-                shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.path.join(os.getenv('REPORTS_FINISHED_PATH'))) # 정보 추출 파일 이동
+                shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.getenv('REPORTS_FINISHED_PATH')) # 정보 추출 파일 이동
                 
                 return {"report_id": report_id, "llm_id": llm_id}

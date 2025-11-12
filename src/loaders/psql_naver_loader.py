@@ -1,6 +1,9 @@
 from utils.nodes.cores import Node
 from utils.nodes.database import DBNode
 
+from utils.logger import log_function
+import logging
+
 import psycopg2
 
 
@@ -10,6 +13,7 @@ class Crawler(Node):
 
 
 class ReportDB(DBNode):
+    @log_function(logging.INFO)
     def __call__(self, values:dict):
         report_name = values["report_name"]
         # report_url = values["report_url"]

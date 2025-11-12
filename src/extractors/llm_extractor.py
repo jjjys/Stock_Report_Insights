@@ -1,5 +1,8 @@
 from utils.nodes.cores import Node
 
+from utils.logger import log_function
+import logging
+
 from google import genai
 import os, time, json
 
@@ -19,6 +22,7 @@ class DocumentsLoader(Node):
         self.extension = extension if extension is not None else "PDF"
         self.verbose = verbose
 
+    @log_function(logging.INFO)
     def __call__(self, *args, **kwargs) -> list:
         """
         경로에서 참고문서 파일 목록을 가져옴
@@ -101,6 +105,7 @@ class LLMFeatsExtractor(Node):
 
         return is_valid
 
+    @log_function(logging.INFO)
     def call_gemini(self, file_path:str, llm_version:str, prompt:str, interval:int|float=0, api_key:str=None) -> dict:
         client = genai.Client(api_key=api_key)
         sample_file = client.files.upload(file=file_path)
@@ -110,8 +115,10 @@ class LLMFeatsExtractor(Node):
 
         return json.loads(response)
 
+    @log_function(logging.INFO)
     def call_llama(self) -> dict:
         pass
 
+    @log_function(logging.INFO)
     def call_qwen(self) -> dict:
         pass
