@@ -77,6 +77,6 @@ class ReportExtractionsDB(DBNode):
             else:
                 self.conn.commit()  # reports에 report_extractions 적재 사실 업데이트 실패 시 적재 내용도 롤백
                 os.makedirs(os.getenv('REPORTS_FINISHED_PATH'), exist_ok=True)
-                shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.path.join(os.getenv('REPORTS_FINISHED_PATH'))) # 정보 추출 파일 이동
+                shutil.move(os.path.join(os.getenv('REPORTS_PATH'), report_name), os.getenv('REPORTS_FINISHED_PATH')) # 정보 추출 파일 이동
                 
                 return {"report_id": report_id, "llm_id": llm_id}
