@@ -1,5 +1,8 @@
 from utils.nodes.database import DBNode
 
+from utils.logger import log_function
+import logging
+
 import psycopg2
 import os, shutil
 from dotenv import load_dotenv
@@ -8,6 +11,7 @@ load_dotenv()
 
 
 class ReportExtractionsDB(DBNode):
+    @log_function(logging.INFO)
     def __call__(self, values:dict) -> dict: # (report_name, llm_type, llm_version, stock, ticker, investment_opinion, published_date, current_price, target_price, author, firm)
         report_name = values["report_name"]
         llm_type = values["llm_type"]

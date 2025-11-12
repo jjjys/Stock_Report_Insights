@@ -1,5 +1,8 @@
 from utils.nodes.cores import Node
 
+from utils.logger import log_function
+import logging
+
 from multipledispatch import dispatch
 from datetime import datetime, timedelta
 
@@ -50,6 +53,7 @@ class KrxTargetHitter(Node):
         # 직접 호출 시 사용
         return self.krx_target_hitter(ticker, report_date, target_price, report_id, llm_id)
 
+    @log_function(logging.INFO)
     def krx_target_hitter(self, ticker:str, report_date:str, target_price:int, report_id:int=None, llm_id:int=None) -> dict:
         start_date = report_date.replace("-", "")
         end_date = datetime.today().strftime("%Y%m%d")

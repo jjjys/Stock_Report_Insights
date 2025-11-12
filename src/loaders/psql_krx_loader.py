@@ -1,10 +1,14 @@
 from utils.nodes.database import DBNode
 
+from utils.logger import log_function
+import logging
+
 import psycopg2
 import os
 
 
 class KrxDB(DBNode):
+    @log_function(logging.INFO)
     def __call__(self, values:dict): # (report_id, llm_id, target_price_reached_date, days_to_reach)
         report_id = values["report_id"]
         llm_id = values["llm_id"]
@@ -45,7 +49,8 @@ class KrxHitDump(DBNode):
         else:
             self.conn = psycopg2.connect(host=os.getenv('DB_HOST'), dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'))
             self.cursor = self.conn.cursor()
-
+    
+    @log_function(logging.INFO)
     def __call__(self, *arg, **kwargs):
         self.cursor.execute("""
             SELECT r.id, r.llm_id, s.ticker, TO_CHAR(r.published_date, 'YYYY-MM-DD'), r.target_price
