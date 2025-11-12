@@ -47,7 +47,8 @@ class KrxHitDump(DBNode):
             self.conn = conn
             self.cursor = cursor
         else:
-            self.conn = psycopg2.connect(host=os.getenv('DB_HOST'), dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'))
+            self.conn = psycopg2.connect(dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'),
+                                         host=os.getenv('DB_HOST'), port=os.getenv('DB_PORT'))
             self.cursor = self.conn.cursor()
     
     @log_function(logging.INFO)

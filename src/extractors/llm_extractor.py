@@ -60,7 +60,7 @@ class LLMFeatsExtractor(Node):
         self.api_key = api_key
         self.essential_cols = essential_cols if essential_cols is not None else tuple()
 
-        self.model_map = {"gemini": self.call_gemini,}# "llama": self.call_llama, "qwen": self.call_qwen} # 모델명 + 메소드 매핑
+        self.model_map = {"gemini": self.call_gemini,}# "gpt": self.call_gpt, "llama": self.call_llama, "qwen": self.call_qwen} # 모델명 + 메소드 매핑
         self.na_items = (None, "N/A", "n/a", "", 0) # 추출 실패 시 발생 항목
 
     def __call__(self, doc:str, *args, **kwargs) -> dict:
@@ -114,6 +114,10 @@ class LLMFeatsExtractor(Node):
         response = response.text.replace("```json", "").replace("```", "").strip()
 
         return json.loads(response)
+
+    @log_function(logging.INFO)
+    def call_gpt(self) -> dict:
+        pass
 
     @log_function(logging.INFO)
     def call_llama(self) -> dict:
