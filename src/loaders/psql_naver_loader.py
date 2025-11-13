@@ -22,7 +22,7 @@ class ReportDB(DBNode):
         post_date = values["작성일"]
 
         try:
-            self.cursor.execute(f"""
+            self.cursor.execute("""
                 INSERT INTO reports (post_date, report_name, report_url)
                 VALUES (%s, %s, %s) ON CONFLICT DO NOTHING;
             """, (post_date, report_name, report_url))
@@ -32,7 +32,7 @@ class ReportDB(DBNode):
             raise
         else:
             self.conn.commit()
-            # self.cursor.execute(f"""
+            # self.cursor.execute("""
             #     SELECT id FROM reports WHERE report_name = %s;
             # """, report_name)
             # report_id = self.cursor.fetchone()[0]
