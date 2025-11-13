@@ -29,7 +29,7 @@ class ReportExtractionsDB(DBNode):
         analyst_id = None
 
         try:
-            self.cursor.execute(f"""
+            self.cursor.execute("""
                 INSERT INTO stock_info (stock, ticker)
                 VALUES (%s, %s) ON CONFLICT DO NOTHING;
                 INSERT INTO llm (type, version)
@@ -43,17 +43,17 @@ class ReportExtractionsDB(DBNode):
             # raise
         else:
             self.conn.commit()
-            self.cursor.execute(f"""
+            self.cursor.execute("""
                 SELECT id FROM reports WHERE report_name = %s;
             """, (report_name,))
             report_id = self.cursor.fetchone()[0]
             # print(report_name, "==> report_id:", report_id)
-            self.cursor.execute(f"""
+            self.cursor.execute("""
                 SELECT stock_id FROM stock_info WHERE ticker = %s;
             """, (ticker,))
             stock_id = self.cursor.fetchone()[0]
             # print("ticker=", ticker, "==> stock_id:", stock_id)
-            self.cursor.execute(f"""
+            self.cursor.execute("""
                 SELECT llm_id FROM llm WHERE type = %s AND version = %s;
             """, (llm_type, llm_version))
             llm_id = self.cursor.fetchone()[0]

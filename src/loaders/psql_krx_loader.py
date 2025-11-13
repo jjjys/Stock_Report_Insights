@@ -52,7 +52,7 @@ class KrxHitDump(DBNode):
             self.cursor = self.conn.cursor()
     
     @log_function(logging.INFO)
-    def __call__(self, *arg, **kwargs):
+    def __call__(self, *args, **kwargs):
         self.cursor.execute("""
             SELECT r.id, r.llm_id, s.ticker, TO_CHAR(r.published_date, 'YYYY-MM-DD'), r.target_price
             FROM report_extractions r
