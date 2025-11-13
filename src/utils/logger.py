@@ -1,5 +1,6 @@
 import logging
 import os, sys
+from datetime import datetime
 from functools import wraps
 from dotenv import load_dotenv
 
@@ -31,7 +32,7 @@ def setup_logger():
     logger.addHandler(console_handler)
 
     os.makedirs('logs', exist_ok=True)
-    file_handler = logging.FileHandler('logs/app.log')
+    file_handler = logging.FileHandler(f"logs/app_{datetime.now().strftime('%Y_%m_%d')}.log")
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
