@@ -165,14 +165,17 @@ class NaverPaySecuritiesCrawler:
                         "조회수": cols[4].text.strip() if len(cols) > 4 else ""
                     }
 
-                if report_link:
-                    stock_name = row_data.get("종목명", "")  # 종목명 추출 (없으면 빈 문자열)
-                    report_path = self.download_report(report_link, category, row_data["제목"], row_data["작성일"], stock_name)
-                    row_data["Report_local_path"] = report_path if report_path else None 
-                    date = row_data["작성일"].replace(".", "")
-                    stock = ''.join(c for c in row_data["종목명"] if c.isalnum() or c in (" ", "_")).replace(" ", "_")
-                    title = ''.join(c for c in row_data["제목"] if c.isalnum() or c in (" ", "_")).replace(" ", "_")
-                    row_data["report_name"] = f"{date}_[{stock}]_{title}.pdf"
+                if not report_link:
+                    print(f"⚠️  PDF URL 없음: {cols[1].text.strip() if len(cols) > 1 else '제목 없음'} - 스킵")
+                    continue
+
+                stock_name = row_data.get("종목명", "")  # 종목명 추출 (없으면 빈 문자열)
+                report_path = self.download_report(report_link, category, row_data["제목"], row_data["작성일"], stock_name)
+                row_data["Report_local_path"] = report_path if report_path else None 
+                date = row_data["작성일"].replace(".", "")
+                stock = ''.join(c for c in row_data["종목명"] if c.isalnum() or c in (" ", "_")).replace(" ", "_")
+                title = ''.join(c for c in row_data["제목"] if c.isalnum() or c in (" ", "_")).replace(" ", "_")
+                row_data["report_name"] = f"{date}_[{stock}]_{title}.pdf"
                 
                 # 중복 체크: 매번 빈 self.data이니 항상 추가 (파일 체크로 보완)
                 if row_data not in self.data[category]["data"]:
