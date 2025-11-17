@@ -61,7 +61,7 @@ else
 fi
 
 # === 권한 부여 ===
-$PSQL -c "GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USER\";"
+$PSQL -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 
 # === init.sql 실행 ===
 echo "Applying schema from init.sql..."
