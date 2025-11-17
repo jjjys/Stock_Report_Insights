@@ -29,7 +29,7 @@ while true; do
     elapsed=$(( $(date +%s) - start ))
     if (( elapsed > WAIT_TIMEOUT )); then
         echo "ERROR: Connection timeout after ${WAIT_TIMEOUT}s"
-        if [[ "$DB_HOST" == "postgres" ]]; then
+        if [[ "$DB_HOST" = "postgres" ]]; then
             echo "   → Did you forget '--profile db'?"
         fi
         exit 1
@@ -42,6 +42,12 @@ done
 # === psql 명령어 정의 ===
 export PGPASSWORD="$POSTGRES_PASSWORD"
 PSQL="psql -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER -d $POSTGRES_DB -v ON_ERROR_STOP=1"
+
+# === 사용자 검증 === # 권한 분리 필요 시 실행
+# if [ "$POSTGRES_USER" = "$DB_USER" ]; then
+#     echo "ERROR: POSTGRES_USER and DB_USER cannot be the same."
+#     exit 1
+# fi
 
 # === 사용자 생성 ===
 if ! $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
