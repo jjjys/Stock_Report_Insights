@@ -55,8 +55,8 @@ x-airflow-common:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@${DB_HOST:-postgres}:${DB_PORT:-5432}/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@${DB_HOST:-postgres}:${DB_PORT:-5432}/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER:-airflow}:${POSTGRES_KEY:-airflow}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-airflow}
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${DB_USER:-airflow}:${POSTGRES_KEY:-airflow}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-airflow}
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
@@ -94,15 +94,16 @@ services:
       - db
     image: postgres:16
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
+      # Priority: POSTGRES_USER > DB_USER > airflow
+      POSTGRES_USER: ${POSTGRES_USER:-${DB_USER:-airflow}}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${POSTGRES_KEY:-airflow}}
+      POSTGRES_DB: ${POSTGRES_DB:-${DB_NAME:-airflow}}
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ${AIRFLOW_PROJ_DIR:-.}/scripts/setup_db.sh:/docker-entrypoint-initdb.d/00-setup-user-db.sh:ro
       - ${AIRFLOW_PROJ_DIR:-.}/init.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-${DB_USER:-airflow}}"]
       interval: 10s
       retries: 5
       start_period: 5s
