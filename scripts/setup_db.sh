@@ -21,7 +21,7 @@ start=$(date +%s)
 echo "Waiting for PostgreSQL ($DB_HOST:$DB_PORT) – timeout: ${WAIT_TIMEOUT}s"
 
 while true; do
-    if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER" >/dev/null 2>&1; then
+    if pg_isready -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER >/dev/null 2>&1; then
         echo "PostgreSQL is ready!"
         break
     fi
