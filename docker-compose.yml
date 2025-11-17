@@ -55,8 +55,8 @@ x-airflow-common:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@${DB_HOST:-postgres}:${DB_PORT:-5432}/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@${DB_HOST:-postgres}:${DB_PORT:-5432}/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
@@ -86,9 +86,12 @@ x-airflow-common:
       condition: service_healthy
     postgres:
       condition: service_healthy
+      required: false
 
 services:
   postgres:
+    profiles:
+      - db
     image: postgres:16
     environment:
       POSTGRES_USER: airflow
@@ -96,6 +99,8 @@ services:
       POSTGRES_DB: airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+      - ${AIRFLOW_PROJ_DIR:-.}/scripts/setup_db.sh:/docker-entrypoint-initdb.d/00-setup-user-db.sh:ro
+      - ${AIRFLOW_PROJ_DIR:-.}/init.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
@@ -207,11 +212,18 @@ services:
 
   airflow-init:
     <<: *airflow-common
+    env_file: .env
     entrypoint: /bin/bash
     # yamllint disable rule:line-length
     command:
       - -c
       - |
+        echo "Starting DB setup..."
+        /bin/bash /opt/airflow/scripts/setup_db.sh || {
+          echo "DB setup failed! See logs above."
+          exit 1
+        }
+
         if [[ -z "${AIRFLOW_UID}" ]]; then
           echo
           echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
@@ -296,6 +308,9 @@ services:
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/scripts/setup_db.sh:/opt/airflow/scripts/setup_db.sh:ro
+      - ${AIRFLOW_PROJ_DIR:-.}/init.sql:/opt/airflow/init.sql:ro
 
   airflow-cli:
     <<: *airflow-common
