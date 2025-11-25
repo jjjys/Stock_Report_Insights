@@ -41,7 +41,8 @@ done
 
 # === psql 명령어 정의 ===
 export PGPASSWORD="$POSTGRES_PASSWORD"
-PSQL="psql -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER -d $POSTGRES_DB -v ON_ERROR_STOP=1"
+PSQL_SUPER="psql -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER -v ON_ERROR_STOP=1"
+PSQL_DBUSER="psql -h $DB_HOST -p $DB_PORT -U $DB_USER -v ON_ERROR_STOP=1"
 
 # === 사용자 검증 === # 권한 분리 필요 시 실행
 # if [ "$POSTGRES_USER" = "$DB_USER" ]; then
@@ -52,7 +53,7 @@ PSQL="psql -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER -d $POSTGRES_DB -v ON_ERROR
 # === 사용자 생성 ===
 if ! $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
     echo "Creating user: $DB_USER"
-    $PSQL -c "CREATE USER $DB_USER WITH PASSWORD '$USER_KEY' LOGIN;"
+    $PSQL_SUPER -c "CREATE USER $DB_USER WITH PASSWORD '$USER_KEY' LOGIN;"
     # $PSQL -c "ALTER USER $DB_USER CREATEDB;"
 else
     echo "User exists: $DB_USER"
@@ -61,16 +62,45 @@ fi
 # === 데이터베이스 생성 ===
 if ! $PSQL -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
     echo "Creating database: $DB_NAME"
-    $PSQL -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
+    $PSQL_SUPER -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
 else
     echo "Database exists: $DB_NAME"
 fi
 
 # === 권한 부여 ===
-$PSQL -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
+echo "Applying default privileges..."
+$PSQL_SUPER -d $DB_NAME -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
+$PSQL_SUPER -d $DB_NAME -c "GRANT USAGE ON SCHEMA public TO $DB_USER;"
+$PSQL_SUPER -d $DB_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $DB_USER;"
+$PSQL_SUPER -d $DB_NAME -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $DB_USER;"
 
 # === init.sql 실행 ===
 echo "Applying schema from init.sql..."
-psql -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER -d $DB_NAME -f /opt/airflow/init.sql
+export PGPASSWORD="$USER_KEY"
+$PSQL_DBUSER -d $DB_NAME -f /opt/airflow/init.sql
+
+# ========== init.sql로 생성된 테이블의 owner 보정 ==========
+echo "Fixing ownership of all tables to $DB_USER..."
+
+export PGPASSWORD="$POSTGRES_PASSWORD"
+$PSQL_SUPER -d $DB_NAME -c "
+DO \$\$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT tablename 
+        FROM pg_tables 
+        WHERE schemaname='public'
+    )
+    LOOP
+        EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' OWNER TO $DB_USER';
+    END LOOP;
+END
+\$\$;
+"
+
+# ========== 시퀀스 권한 (serial, identity 컬럼 대비) ==========
+echo "Granting sequence privileges..."
+$PSQL_SUPER -d $DB_NAME -c "GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;"
 
 echo "DB setup completed!"
