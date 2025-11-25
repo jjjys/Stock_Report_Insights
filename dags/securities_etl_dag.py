@@ -2,10 +2,13 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 from airflow.models import Variable
-from main import load_raw_reports, load_report_feats, load_krx_hit
+from main import load_raw_reports, load_report_feats, load_krx_hit, file_discord
 
 def t1_dag(**context):
     load_raw_reports(context["prev_ds"], context["ds"])
+
+def t1_1_dag():
+    file_discord()
 
 def t2_dag(**context):
     load_report_feats(context["llm_type"], context["llm_version"])
@@ -27,6 +30,11 @@ with DAG(
         task_id='reports_download_load',
         python_callable=t1_dag
     )
+
+    t1_1 = PythonOperator(
+        task_id='discord_backup',
+        python_callalbe=t2_dag
+    )
     
     t2 = PythonOperator(
         task_id='extract_report_items_load',
@@ -40,4 +48,5 @@ with DAG(
     )
     
     # 태스크 의존성: t1 -> t2 -> t3 -> t4 -> t5
-    t1 >> t2 >> t3 
+    t1 >> [t1_1, t2]
+    t2 >> t3
