@@ -31,7 +31,7 @@ WORKDIR /opt/airflow
 
 COPY --chown=airflow:airflow requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir google-generativeai
+RUN pip install --no-cache-dir google-genai
 
 # ──────────────────────────────
 # 4. 프로젝트 코드 복사
