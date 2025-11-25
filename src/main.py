@@ -4,6 +4,7 @@ from crawlers.krx_extractor import KrxTargetHitter
 from loaders.psql_naver_loader import Crawler, ReportDB
 from loaders.psql_llm_loader import ReportExtractionsDB
 from loaders.psql_krx_loader import KrxDB, KrxHitDump
+from utils.discord import get_file_list, send_discord_file
 
 from utils.logger import setup_logger
 from dotenv import load_dotenv
@@ -46,11 +47,25 @@ def load_krx_hit(conn=None, cursor=None):
     (krx_dump // (krx_hitter - krx_insert))(None)
 
 
+def file_discord():
+    processed_list = get_file_list(os.getenv('REPORTS_FINISHED_PATH'))
+    if not processed_list:  # 파일 리스트가 비어 있는 경우
+        print("📂 처리할 파일이 없습니다.")
+    else:
+        for idx, file_path in enumerate(processed_list):
+            send_discord_file(
+                os.getenv("report_backup_WEB_HOOK"),
+                file_path,
+                f"처리된 파일({idx+1}/{len(processed_list)}) Discord 전송 후 삭제 완료.\n처리된 파일명:{file_path}")
+            print(f"📤 진행 상황: {idx+1}/{len(processed_list)} 파일 처리 완료")
+
+
 if __name__ == "__main__":
     # pass
     with psycopg2.connect(dbname=os.getenv('DB_NAME'), user=os.getenv('DB_USER'), password=os.getenv('POSTGRES_KEY'), host=os.getenv('DB_HOST'), port=os.getenv('DB_PORT')) as conn:
         with conn.cursor() as cursor:
             load_raw_reports(conn=conn, cursor=cursor)
+            file_discord()
             route_llm_extractor()
             load_report_feats("gemini", "2.5-flash", os.getenv('GEMINI_API_KEY'), conn, cursor)
             load_krx_hit(conn, cursor)
