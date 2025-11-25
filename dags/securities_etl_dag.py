@@ -33,7 +33,7 @@ with DAG(
 
     t1_1 = PythonOperator(
         task_id='discord_backup',
-        python_callalbe=t1_1_dag
+        python_callable=t1_1_dag
     )
     
     t2 = PythonOperator(
