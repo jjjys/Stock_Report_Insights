@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS stock_info (
 );
 
 CREATE TABLE IF NOT EXISTS analyst (
-    anal_id SERIAL PRIMARY KEY,
+    analyst_id SERIAL PRIMARY KEY,
     name VARCHAR(15) NOT NULL,
     firm VARCHAR(100) NOT NULL,
     UNIQUE(name, firm)
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS report_extractions (
     published_date DATE NOT NULL,
     current_price INTEGER CHECK (current_price > 0),
     target_price INTEGER NOT NULL CHECK (target_price > 0),
-    analyst_id INTEGER REFERENCES analyst(anal_id) ON DELETE SET NULL,
+    analyst_id INTEGER REFERENCES analyst(analyst_id) ON DELETE SET NULL,
     krx_loaded BOOLEAN DEFAULT FALSE,
     extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id, llm_id) -- 중복 추출 방지
