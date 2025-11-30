@@ -1,0 +1,22 @@
+# 가상환경
+.Stock_Report_Insights/
+
+# 증권 레포트
+data/
+
+# 로그 파일
+logs/
+*.log
+
+# 컴파일
+__pycache__/
+*.pyc
+
+# 설정
+*.cfg
+
+# git
+.git
+.gitignore
+
+README.md

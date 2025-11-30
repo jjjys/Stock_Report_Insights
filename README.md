@@ -1,3 +1,22 @@
+# 서버 올리기
+docker-compose --profile db up --build
+
+# 서버 내리기
+docker-compose --profile db down --volumes --remove-orphans
+
+# 레포트 수집(동적 웹 크롤링) 확인
+1. docker exec -it stock_report_insights-airflow-worker-1 bash
+2. ls data/reports/종목분석_리포트/
+3. ls data/reports_processed/
+
+# 데이터 베이스(psql) 확인
+1. docker exec -it stock_report_insights-postgres-1 bash
+2. psql -U postgres -d stockdb
+3. SQL 문으로 확인
+3.1. SELECT * FROM reports;
+3.2. SELECT * FROM report_extractions;
+3.3. SELECT * FROM krx;
+
 # Git Commit message rules
 1. feat: 새로운 기능 추가
 2. fix: 버그 수정
