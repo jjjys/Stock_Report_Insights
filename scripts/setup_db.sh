@@ -51,7 +51,7 @@ PSQL_DBUSER="psql -h $DB_HOST -p $DB_PORT -U $DB_USER -v ON_ERROR_STOP=1"
 # fi
 
 # === 사용자 생성 ===
-if ! $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
+if ! $PSQL_SUPER -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
     echo "Creating user: $DB_USER"
     $PSQL_SUPER -c "CREATE USER $DB_USER WITH PASSWORD '$USER_KEY' LOGIN;"
     # $PSQL -c "ALTER USER $DB_USER CREATEDB;"
@@ -60,7 +60,7 @@ else
 fi
 
 # === 데이터베이스 생성 ===
-if ! $PSQL -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+if ! $PSQL_SUPER -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
     echo "Creating database: $DB_NAME"
     $PSQL_SUPER -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
 else
