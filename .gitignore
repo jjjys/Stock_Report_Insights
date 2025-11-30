@@ -1,14 +1,20 @@
 # 가상환경
-.Stock_Report_Insights
+.Stock_Report_Insights/
 
 # 증권 레포트
-data
+data/
 
 # 민감 정보
 .env
 
 # 로그 파일
-logs
+logs/
+*.log
 
 # 컴파일
-__pycache__
+__pycache__/
+*.pyc
+
+# 설정
+config/
+*.cfg
