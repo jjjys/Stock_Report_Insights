@@ -148,7 +148,7 @@ class NaverPaySecuritiesCrawler:
                         "제목": cols[1].text.strip(),
                         "증권사": cols[2].text.strip(),
                         "Report_url": report_link,
-                        "작성일": cols[4].text.strip() if len(cols) > 4 else "",
+                        "작성일": "20" + cols[4].text.strip() if len(cols) > 4 else "",
                         "조회수": cols[5].text.strip() if len(cols) > 5 else ""
                     }
                 elif category == "산업분석 리포트":
