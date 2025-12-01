@@ -12,6 +12,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 from utils.logger import log_function
+from dotenv import load_dotenv
+
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
@@ -30,6 +32,8 @@ class NaverPaySecuritiesCrawler:
         # self.checkpoint_file = "crawler_checkpoint.json"  # 주석: 체크포인트 비활성화
         self.output_file = os.path.join(PROJECT_ROOT, "data", "naver_securities_reports.json")  # JSON 파일도 루트 기준 경로
         self.report_dir = os.path.join(PROJECT_ROOT, "data", "reports")  # 프로젝트 루트 기준 경로
+        # load_dotenv()
+        # self.report_dir = os.getenv("REPORTS_PATH")  # 프로젝트 루트 기준 경로. dotenv로 경로 설정 변경
         self.max_retries = 3
         self.wait_time = 5  # 대기 시간 증가
         self.max_pages = max_pages  # 수집 페이지 최대치. 필요에 따라 조정 가능
@@ -144,7 +148,7 @@ class NaverPaySecuritiesCrawler:
                         "제목": cols[1].text.strip(),
                         "증권사": cols[2].text.strip(),
                         "Report_url": report_link,
-                        "작성일": cols[4].text.strip() if len(cols) > 4 else "",
+                        "작성일": "20" + cols[4].text.strip() if len(cols) > 4 else "",
                         "조회수": cols[5].text.strip() if len(cols) > 5 else ""
                     }
                 elif category == "산업분석 리포트":
